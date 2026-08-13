@@ -1,0 +1,37 @@
+name: Backend CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: ada-be
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: ada-be/package-lock.json
+
+      - run: npm ci
+
+      - run: npm run prisma:generate
+        env:
+          DATABASE_URL: postgresql://user:password@localhost:5432/database
+
+      - run: npm run lint
+      - run: npm test -- --runInBand
+      - run: npm run build

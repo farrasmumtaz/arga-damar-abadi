@@ -1,0 +1,52 @@
+# Arga Damar API
+
+Backend modular monolith untuk e-commerce material dan peralatan listrik PT Arga Damar Abadi.
+
+## Stack
+
+- NestJS 11
+- Prisma ORM 7
+- PostgreSQL 17
+- JWT/Passport foundation
+- Swagger/OpenAPI
+- Docker Compose
+
+## Menjalankan lokal
+
+```bash
+cp .env.example .env
+docker compose up -d
+npm install
+npm run prisma:generate
+npm run prisma:migrate -- --name init
+npm run start:dev
+```
+
+API tersedia pada `http://localhost:3000/api/v1` dan Swagger pada `http://localhost:3000/docs` selama bukan production.
+
+## Validasi
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+## Modul domain
+
+- `auth`: autentikasi, refresh-token rotation, dan RBAC
+- `users`: akun pelanggan dan alamat
+- `catalog`: produk, kategori, brand, gambar, dan spesifikasi
+- `inventory`: stok tersedia dan stok reservasi
+- `carts`: keranjang belanja
+- `orders`: checkout dan lifecycle pesanan
+- `payments`: payment provider dan webhook
+- `quotations`: permintaan quotation dan upload BOQ
+
+## Catatan keamanan
+
+- Jangan commit `.env` atau credential.
+- Ganti seluruh secret contoh sebelum menjalankan aplikasi.
+- Validasi signature webhook payment provider sebelum mengubah status pembayaran.
+- Checkout wajib menggunakan transaction dan idempotency key.
+- Upload BOQ harus dibatasi berdasarkan ukuran, MIME type, dan hasil malware scan.
