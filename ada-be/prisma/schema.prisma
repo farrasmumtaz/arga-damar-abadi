@@ -111,6 +111,7 @@ model Brand {
   updatedAt DateTime  @updatedAt @map("updated_at")
   products  Product[]
 
+  @@index([isActive, name])
   @@map("brands")
 }
 
