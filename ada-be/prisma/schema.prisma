@@ -39,6 +39,10 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum StockMovementType {
+  ADJUSTMENT
+}
+
 enum QuotationStatus {
   SUBMITTED
   REVIEWING
@@ -66,6 +70,7 @@ model User {
   orders        Order[]
   quotations    Quotation[]
   auditLogs     AuditLog[]     @relation("AuditActor")
+  stockMovements StockMovement[]
 
   @@map("users")
 }
@@ -138,6 +143,7 @@ model Product {
   cartItems        CartItem[]
   orderItems       OrderItem[]
   quotationItems   QuotationItem[]
+  stockMovements   StockMovement[]
 
   @@index([categoryId, status])
   @@index([brandId])
@@ -169,6 +175,24 @@ model Inventory {
   product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("inventories")
+}
+
+model StockMovement {
+  id             String            @id @default(uuid()) @db.Uuid
+  productId      String            @map("product_id") @db.Uuid
+  actorId        String            @map("actor_id") @db.Uuid
+  type           StockMovementType @default(ADJUSTMENT)
+  quantityBefore Int               @map("quantity_before")
+  quantityDelta  Int               @map("quantity_delta")
+  quantityAfter  Int               @map("quantity_after")
+  reason         String            @db.VarChar(300)
+  createdAt      DateTime          @default(now()) @map("created_at")
+  product        Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  actor          User              @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([productId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("stock_movements")
 }
 
 model Cart {
