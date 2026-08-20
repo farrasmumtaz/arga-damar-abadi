@@ -1,0 +1,52 @@
+import Link from 'next/link';
+import { LogOut, Menu, Search, ShoppingBag, UserRound, X } from 'lucide-react';
+import { logoutAction } from '@/actions/auth.actions';
+import { getSession } from '@/lib/api';
+
+export async function SiteHeader() {
+  const user = await getSession();
+  return (
+    <header className="site-header">
+      <div className="announcement">
+        <span>Pengiriman Jabodetabek & seluruh Indonesia</span>
+        <span>Butuh penawaran proyek? <strong>Hubungi tim kami</strong></span>
+      </div>
+      <div className="nav-wrap container">
+        <details className="mobile-menu">
+          <summary aria-label="Buka navigasi"><Menu size={21} /></summary>
+          <div className="mobile-drawer">
+            <div className="drawer-heading"><strong>Menu</strong><X size={20} /></div>
+            <Link href="/">Beranda</Link><Link href="/#products">Produk</Link><Link href="/#categories">Kategori</Link><Link href="/quotation">Penawaran</Link><Link href="/#about">Tentang Kami</Link>
+          </div>
+        </details>
+        <Link href="/" className="brand-mark">
+          <span className="brand-symbol">AD</span>
+          <span><strong>ARGA DAMAR</strong><small>Industrial Supply</small></span>
+        </Link>
+        <nav className="desktop-nav" aria-label="Navigasi utama">
+          <Link href="/">Beranda</Link>
+          <Link href="/#products">Produk</Link>
+          <Link href="/#categories">Kategori</Link>
+          <Link href="/quotation">Penawaran</Link>
+          <Link href="/#about">Tentang Kami</Link>
+        </nav>
+        <div className="nav-actions">
+          <button className="icon-button" aria-label="Cari"><Search size={19} /></button>
+          <Link className="icon-button" href="/checkout" aria-label="Keranjang">
+            <ShoppingBag size={19} /><span className="cart-badge">0</span>
+          </Link>
+          {user ? (
+            <div className="user-menu">
+              <span><UserRound size={17} /> {user.fullName.split(' ')[0]}</span>
+              <form action={logoutAction}>
+                <button aria-label="Keluar"><LogOut size={16} /></button>
+              </form>
+            </div>
+          ) : (
+            <Link className="nav-login" href="/login">Masuk</Link>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
