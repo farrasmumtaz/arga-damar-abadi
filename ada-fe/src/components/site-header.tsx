@@ -32,7 +32,7 @@ export async function SiteHeader() {
         </nav>
         <div className="nav-actions">
           <button className="icon-button" aria-label="Cari"><Search size={19} /></button>
-          <Link className="icon-button" href="/checkout" aria-label="Keranjang">
+          <Link className="icon-button" href="/cart" aria-label="Keranjang">
             <ShoppingBag size={19} /><span className="cart-badge">0</span>
           </Link>
           {user ? (

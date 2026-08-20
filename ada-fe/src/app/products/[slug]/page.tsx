@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Check, ShieldCheck, Truck } from 'lucide-react';
 import { ProductVisual } from '@/components/product-visual';
+import { addToCartAction } from '@/actions/cart.actions';
 import { formatPrice, products } from '@/lib/catalog';
 import { getProduct } from '@/lib/catalog-api';
 
@@ -32,7 +33,10 @@ export default async function ProductPage({ params }: ProductPageProps) {
           <div className="detail-meta"><span>{product.brand}</span><span>{product.sku}</span><span className="in-stock"><Check size={14} /> {product.stock} tersedia</span></div>
           <p className="detail-description">{product.description}</p>
           <div className="detail-price"><strong>{formatPrice(product.price)}</strong><span>per {product.unit} · termasuk PPN</span></div>
-          <Link href={`/checkout?product=${product.slug}`} className="button button-primary purchase-button">Lanjut ke pembayaran</Link>
+          <form action={addToCartAction.bind(null, product.id)}>
+            <button className="button button-primary purchase-button">Tambah ke keranjang</button>
+          </form>
+          <Link href={`/checkout?product=${product.slug}`} className="direct-checkout">Beli langsung</Link>
           <div className="detail-assurance"><span><ShieldCheck /> Produk original & bergaransi</span><span><Truck /> Estimasi pengiriman saat checkout</span></div>
         </div>
       </div>
