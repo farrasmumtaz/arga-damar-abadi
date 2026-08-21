@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { CheckCircle2, LockKeyhole } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
+import { CheckoutForm } from '@/components/checkout-form';
 import { ProductVisual } from '@/components/product-visual';
 import { getSession } from '@/lib/api';
 import { getCart } from '@/lib/cart-api';
 import { formatPrice } from '@/lib/catalog';
 import { getProduct } from '@/lib/catalog-api';
+import { getAddresses } from '@/lib/user-api';
 
 export default async function CheckoutPage({
   searchParams,
@@ -21,6 +23,7 @@ export default async function CheckoutPage({
 
   const product = query.product ? await getProduct(query.product) : undefined;
   const cart = product ? null : await getCart();
+  const addresses = await getAddresses();
   const subtotal = product?.price ?? cart?.subtotal ?? 0;
   const checkoutItems = product
     ? [{ id: product.id, product, quantity: 1, subtotal: product.price }]
@@ -56,9 +59,7 @@ export default async function CheckoutPage({
             <p className="total">
               <span>Total sementara</span><strong>{formatPrice(subtotal)}</strong>
             </p>
-            <button className="button button-primary">
-              <LockKeyhole size={17} /> Pilih alamat & bayar
-            </button>
+            <CheckoutForm addresses={addresses} productId={product?.id} />
             <small><CheckCircle2 size={14} /> Pembayaran terenkripsi dan aman</small>
           </aside>
         </div>
