@@ -35,13 +35,20 @@ npm run build
 ## Modul domain
 
 - `auth`: autentikasi, refresh-token rotation, dan RBAC
-- `users`: akun pelanggan dan alamat
+- `users`: profil, alamat, serta manajemen role/status pengguna oleh admin
 - `catalog`: produk, kategori, brand, gambar, dan spesifikasi
 - `inventory`: stok tersedia dan stok reservasi
 - `carts`: keranjang belanja
-- `orders`: checkout dan lifecycle pesanan
+- `orders`: checkout transaksional, ongkir berbasis berat, dan lifecycle pesanan
 - `payments`: payment provider dan webhook
-- `quotations`: permintaan quotation dan upload BOQ
+- `quotations`: permintaan, review harga, dan keputusan quotation
+
+## Konfigurasi ongkir
+
+`SHIPPING_BASE_COST` adalah tarif kilogram pertama dan
+`SHIPPING_PER_KG_COST` adalah tambahan per kilogram berikutnya. Berat dibulatkan
+ke atas dan dihitung sepenuhnya di backend agar total Midtrans tidak dapat
+dimanipulasi client.
 
 ## Catatan keamanan
 

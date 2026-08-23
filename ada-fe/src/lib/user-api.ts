@@ -13,6 +13,18 @@ export interface Address {
   postalCode: string;
   isDefault: boolean;
 }
+export interface UserProfile { id: string; email: string; fullName: string; phone: string | null; role: string }
+export async function getProfile(): Promise<UserProfile | null> {
+  const token = (await cookies()).get('access_token')?.value;
+  if (!token) return null;
+  try {
+    return await apiRequest<UserProfile>('/users/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    return null;
+  }
+}
 
 export async function getAddresses(): Promise<Address[]> {
   const token = (await cookies()).get('access_token')?.value;

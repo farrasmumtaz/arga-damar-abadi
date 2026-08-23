@@ -38,7 +38,7 @@ export async function SiteHeader() {
           {user ? (
             <div className="user-menu">
               {['STAFF', 'ADMIN', 'SUPER_ADMIN'].includes(user.role) && <Link href="/admin">Admin</Link>}
-              <Link href="/account/orders"><UserRound size={17} /> {user.fullName.split(' ')[0]}</Link>
+              <Link href="/account/profile"><UserRound size={17} /> {user.fullName.split(' ')[0]}</Link>
               <form action={logoutAction}>
                 <button aria-label="Keluar"><LogOut size={16} /></button>
               </form>

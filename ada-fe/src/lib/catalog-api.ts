@@ -14,6 +14,7 @@ interface ApiProduct {
   category: { name: string };
   brand: { name: string } | null;
   inventory: { quantity: number; reserved: number } | null;
+  images: Array<{ url: string; altText: string | null }>;
 }
 
 interface ProductPageResponse {
@@ -47,6 +48,8 @@ function mapProduct(product: ApiProduct, index = 0): Product {
       0,
       (product.inventory?.quantity ?? 0) - (product.inventory?.reserved ?? 0),
     ),
+    imageUrl: product.images[0]?.url ?? null,
+    imageAlt: product.images[0]?.altText ?? product.name,
     featured: product.isFeatured,
     accent: visual.accent,
     icon: visual.icon,

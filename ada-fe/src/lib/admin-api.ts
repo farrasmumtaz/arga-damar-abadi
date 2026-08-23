@@ -22,8 +22,11 @@ export interface AdminInventory { productId: string; quantity: number; reserved:
 export interface StockMovement { id: string; quantityBefore: number; quantityDelta: number; quantityAfter: number; reason: string; createdAt: string; actor: { fullName: string; email: string } }
 export interface AdminOrder { id: string; orderNumber: string; status: string; subtotal: string; shippingCost: string; total: string; shippingAddress: Record<string, unknown>; customerNote: string | null; shippingProvider: string | null; trackingNumber: string | null; shippedAt: string | null; deliveredAt: string | null; createdAt: string; user: { fullName: string; email: string; phone?: string | null }; items: Array<{ id: string; sku: string; productName: string; unitPrice: string; quantity: number; subtotal: string }>; payments?: Array<{ id: string; status: string; method: string | null }>; statusHistories?: Array<{ id: string; fromStatus: string; toStatus: string; note: string | null; createdAt: string; actor: { fullName: string; email: string } | null }> }
 export interface AdminQuotation { id: string; quotationNumber: string; projectName: string; companyName?: string | null; contactName?: string; contactPhone?: string; notes?: string | null; validUntil?: string | null; status: string; createdAt: string; user: { fullName: string; email: string; phone?: string | null }; items: Array<{ id: string; description: string; quantity: number; unitPrice: string | null; product?: { name: string; sku: string } | null }> }
-export interface AdminProduct { id: string; categoryId: string; brandId: string | null; sku: string; name: string; slug: string; shortDescription: string | null; description: string | null; status: string; price: string; weightGram: number; isFeatured: boolean; category: { name: string }; brand: { name: string } | null; inventory: { quantity: number; reserved: number; lowStockLevel: number } | null }
+export interface AdminProduct { id: string; categoryId: string; brandId: string | null; sku: string; name: string; slug: string; shortDescription: string | null; description: string | null; status: string; price: string; weightGram: number; isFeatured: boolean; category: { name: string }; brand: { name: string } | null; images: Array<{ url: string; altText: string | null; sortOrder: number }>; inventory: { quantity: number; reserved: number; lowStockLevel: number } | null }
 export interface CatalogOption { id: string; name: string }
+export interface AdminCategory extends CatalogOption { slug: string; parentId: string | null; isActive: boolean; sortOrder: number }
+export interface AdminBrand extends CatalogOption { slug: string; logoUrl: string | null; isActive: boolean }
+export interface AdminUser { id: string; email: string; fullName: string; phone: string | null; role: 'CUSTOMER' | 'STAFF' | 'ADMIN' | 'SUPER_ADMIN'; isActive: boolean; createdAt: string; _count: { orders: number; quotations: number } }
 export async function getAdminInventory() { return adminRequest<{ data: AdminInventory[] }>('/inventory?limit=100'); }
 export async function getInventoryDetail(productId: string) { return adminRequest<AdminInventory>(`/inventory/${productId}`); }
 export async function getStockMovements(productId: string) { return adminRequest<StockMovement[]>(`/inventory/${productId}/movements`); }
@@ -40,3 +43,11 @@ export async function getCatalogOptions() {
   ]);
   return { categories: categories.data, brands: brands.data };
 }
+export async function getAdminCatalog() {
+  const [categories, brands] = await Promise.all([
+    adminRequest<{ data: AdminCategory[] }>('/categories?limit=100'),
+    adminRequest<{ data: AdminBrand[] }>('/brands?limit=100'),
+  ]);
+  return { categories: categories.data, brands: brands.data };
+}
+export async function getAdminUsers() { return adminRequest<AdminUser[]>('/users/admin'); }

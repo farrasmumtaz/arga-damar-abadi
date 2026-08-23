@@ -58,7 +58,7 @@ export default async function CartPage() {
             <h3>Ringkasan belanja</h3>
             <p><span>Total item</span><span>{cart.itemCount}</span></p>
             <p><span>Subtotal</span><strong>{formatPrice(cart.subtotal)}</strong></p>
-            <p><span>Pengiriman</span><span>Dihitung saat checkout</span></p>
+            <p><span>Pengiriman</span><span>Dihitung dari berat saat checkout</span></p>
             <hr />
             <p className="total"><span>Total sementara</span><strong>{formatPrice(cart.subtotal)}</strong></p>
             <Link className="button button-primary" href="/checkout">Lanjut checkout <ArrowRight size={17} /></Link>

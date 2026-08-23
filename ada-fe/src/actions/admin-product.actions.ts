@@ -9,6 +9,11 @@ export interface ProductActionState { error?: string }
 
 function payload(formData: FormData) {
   const brandId = String(formData.get('brandId') ?? '');
+  const images = String(formData.get('imageUrls') ?? '')
+    .split(/\r?\n/)
+    .map((url) => url.trim())
+    .filter(Boolean)
+    .map((url, sortOrder) => ({ url, sortOrder }));
   return {
     categoryId: String(formData.get('categoryId')),
     brandId: brandId || null,
@@ -23,6 +28,7 @@ function payload(formData: FormData) {
     isFeatured: formData.get('isFeatured') === 'on',
     initialStock: Number(formData.get('initialStock') ?? 0),
     lowStockLevel: Number(formData.get('lowStockLevel') ?? 5),
+    images,
   };
 }
 async function mutate(path: string, method: string, body?: unknown): Promise<string | null> {

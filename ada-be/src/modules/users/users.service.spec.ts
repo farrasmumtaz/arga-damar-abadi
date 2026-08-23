@@ -1,7 +1,8 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { UsersService } from './users.service';
+import { UserRole } from '../../generated/prisma/enums';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -38,5 +39,22 @@ describe('UsersService', () => {
     await expect(
       service.updateAddress('user-id', 'address-id', { label: 'Office' }),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('prevents an admin from promoting a super admin', async () => {
+    userFindUnique.mockResolvedValue({ role: UserRole.CUSTOMER });
+    await expect(
+      service.updateAccess('admin-id', UserRole.ADMIN, 'user-id', {
+        role: UserRole.SUPER_ADMIN,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('prevents changing your own access', async () => {
+    await expect(
+      service.updateAccess('admin-id', UserRole.ADMIN, 'admin-id', {
+        isActive: false,
+      }),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 });

@@ -54,7 +54,7 @@ export default async function CheckoutPage({
           <aside className="order-summary">
             <h3>Total pesanan</h3>
             <p><span>Subtotal</span><strong>{formatPrice(subtotal)}</strong></p>
-            <p><span>Pengiriman</span><span>Dihitung berikutnya</span></p>
+            <p><span>Pengiriman</span><span>Dihitung dari berat</span></p>
             <hr />
             <p className="total">
               <span>Total sementara</span><strong>{formatPrice(subtotal)}</strong>

@@ -25,7 +25,11 @@ export function ProductVisual({ product, large = false }: { product: Product; la
       style={{ '--accent': product.accent } as React.CSSProperties}
     >
       <span className="visual-orbit" />
-      <Icon strokeWidth={1.25} />
+      {product.imageUrl ? (
+        <img src={product.imageUrl} alt={product.imageAlt ?? product.name} loading="lazy" />
+      ) : (
+        <Icon strokeWidth={1.25} />
+      )}
       <span className="visual-sku">{product.sku}</span>
     </div>
   );

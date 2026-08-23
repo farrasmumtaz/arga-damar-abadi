@@ -4,10 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
+import { UserRole } from '../../generated/prisma/enums';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { CreateAddressDto } from './dto/create-address.dto';
 import { UpdateAddressDto } from './dto/update-address.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { UpdateUserAccessDto } from './dto/update-user-access.dto';
 
 const profileSelect = {
   id: true,
@@ -31,6 +33,58 @@ export class UsersService {
     });
     if (!user) throw new NotFoundException('User not found');
     return user;
+  }
+
+  findAllAdmin() {
+    return this.prisma.user.findMany({
+      take: 200,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        phone: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+        _count: { select: { orders: true, quotations: true } },
+      },
+    });
+  }
+
+  async updateAccess(
+    actorId: string,
+    actorRole: UserRole,
+    userId: string,
+    dto: UpdateUserAccessDto,
+  ) {
+    if (actorId === userId) {
+      throw new ConflictException('You cannot change your own access');
+    }
+    if (dto.role === undefined && dto.isActive === undefined) {
+      throw new ConflictException('No access changes supplied');
+    }
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (!target) throw new NotFoundException('User not found');
+    if (
+      actorRole !== UserRole.SUPER_ADMIN &&
+      (target.role === UserRole.SUPER_ADMIN ||
+        dto.role === UserRole.SUPER_ADMIN)
+    ) {
+      throw new ConflictException('Only super admins can manage super admins');
+    }
+    try {
+      return await this.prisma.user.update({
+        where: { id: userId },
+        data: dto,
+        select: { id: true, email: true, role: true, isActive: true },
+      });
+    } catch (error: unknown) {
+      this.handleUserError(error);
+    }
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
@@ -82,9 +136,13 @@ export class UsersService {
           data: { isDefault: false },
         });
       }
+      const { isDefault, ...addressData } = dto;
       return tx.address.update({
         where: { id: addressId },
-        data: dto,
+        data: {
+          ...addressData,
+          ...(isDefault === true ? { isDefault: true } : {}),
+        },
       });
     });
   }

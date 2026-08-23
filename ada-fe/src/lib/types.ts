@@ -9,6 +9,8 @@ export interface Product {
   price: number;
   unit: string;
   stock: number;
+  imageUrl?: string | null;
+  imageAlt?: string;
   featured: boolean;
   accent: string;
   icon: 'drill' | 'lamp' | 'pump' | 'cable' | 'helmet' | 'meter';
@@ -18,6 +20,7 @@ export interface SessionUser {
   id: string;
   email: string;
   fullName: string;
+  phone?: string | null;
   role: 'CUSTOMER' | 'STAFF' | 'ADMIN' | 'SUPER_ADMIN';
 }
 

@@ -69,12 +69,24 @@ export class PaymentsService {
           email: order.user.email,
           phone: order.user.phone,
         },
-        item_details: order.items.map((item) => ({
-          id: item.sku,
-          price: item.unitPrice.toNumber(),
-          quantity: item.quantity,
-          name: item.productName,
-        })),
+        item_details: [
+          ...order.items.map((item) => ({
+            id: item.sku,
+            price: item.unitPrice.toNumber(),
+            quantity: item.quantity,
+            name: item.productName,
+          })),
+          ...(order.shippingCost.isPositive()
+            ? [
+                {
+                  id: 'SHIPPING',
+                  price: order.shippingCost.toNumber(),
+                  quantity: 1,
+                  name: 'Biaya pengiriman',
+                },
+              ]
+            : []),
+        ],
         callbacks: {
           finish: `${this.config.getOrThrow<string>('FRONTEND_URL')}/payment/finish`,
         },
@@ -121,6 +133,15 @@ export class PaymentsService {
         const expired = ['expire', 'cancel', 'deny'].includes(
           dto.transaction_status,
         );
+        if (
+          successful &&
+          order.status !== OrderStatus.PENDING_PAYMENT &&
+          payment.status !== PaymentStatus.PAID
+        ) {
+          throw new ConflictException(
+            `Cannot confirm payment for order in ${order.status} status`,
+          );
+        }
         if (successful && payment.status !== PaymentStatus.PAID) {
           for (const item of order.items) {
             await tx.inventory.update({

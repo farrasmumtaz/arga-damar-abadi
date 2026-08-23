@@ -10,6 +10,7 @@ import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { ShippingCostService } from './shipping-cost.service';
 
 interface LockedStock {
   quantity: number;
@@ -23,7 +24,10 @@ const orderInclude = {
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly shippingCostService: ShippingCostService,
+  ) {}
 
   async checkout(userId: string, dto: CheckoutDto) {
     const existing = await this.prisma.order.findUnique({
@@ -57,6 +61,7 @@ export class OrdersService {
               throw new ConflictException('Cart is empty');
 
             let subtotal = new Prisma.Decimal(0);
+            let totalWeightGram = 0;
             for (const item of cart.items) {
               if (item.product.status !== ProductStatus.ACTIVE) {
                 throw new ConflictException(
@@ -79,9 +84,12 @@ export class OrdersService {
                 data: { reserved: { increment: item.quantity } },
               });
               subtotal = subtotal.plus(item.product.price.mul(item.quantity));
+              totalWeightGram += item.product.weightGram * item.quantity;
             }
 
-            const shippingCost = new Prisma.Decimal(0);
+            const shippingCost = new Prisma.Decimal(
+              this.shippingCostService.calculate(totalWeightGram),
+            );
             const order = await tx.order.create({
               data: {
                 userId,

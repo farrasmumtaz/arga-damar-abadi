@@ -21,4 +21,6 @@ npm run build
 ```
 
 Katalog mengambil data dari Product API dan otomatis memakai typed local fallback
-saat backend belum tersedia. Authentication terhubung ke endpoint backend `/auth/*`.
+saat backend belum tersedia. Storefront mencakup katalog publik, cart, checkout,
+akun, order, dan quotation. Admin console mencakup dashboard, produk, struktur
+katalog, inventory, fulfillment order, quotation, dan kontrol akses pengguna.

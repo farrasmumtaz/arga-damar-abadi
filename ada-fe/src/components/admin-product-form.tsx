@@ -15,6 +15,7 @@ export function AdminProductForm({ action, product, categories, brands }: { acti
     <label className="field"><span>Slug (opsional)</span><input name="slug" defaultValue={product?.slug}/></label>
     <label className="field"><span>Deskripsi singkat</span><input name="shortDescription" defaultValue={product?.shortDescription ?? ''} maxLength={500}/></label>
     <label className="field"><span>Deskripsi</span><textarea name="description" rows={6} defaultValue={product?.description ?? ''}/></label>
+    <label className="field"><span>URL gambar (satu URL per baris, maksimal 10)</span><textarea name="imageUrls" rows={4} defaultValue={product?.images.map((image) => image.url).join('\n') ?? ''} placeholder="https://cdn.example.com/product.jpg"/></label>
     <div className="form-row"><label className="field"><span>Status</span><select name="status" defaultValue={product?.status ?? 'DRAFT'}><option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></label><label className="check-field"><input type="checkbox" name="isFeatured" defaultChecked={product?.isFeatured}/><span>Produk unggulan</span></label></div>
     <button className="button button-primary" disabled={pending}>{pending ? 'Menyimpan...' : 'Simpan produk'}</button>
   </form>;
