@@ -305,6 +305,8 @@ model Quotation {
   quotationNumber String          @unique @map("quotation_number") @db.VarChar(40)
   projectName     String          @map("project_name") @db.VarChar(200)
   companyName     String?         @map("company_name") @db.VarChar(200)
+  contactName     String          @map("contact_name") @db.VarChar(150)
+  contactPhone    String          @map("contact_phone") @db.VarChar(32)
   notes           String?         @db.VarChar(1000)
   attachmentUrl   String?         @map("attachment_url") @db.VarChar(500)
   status          QuotationStatus @default(SUBMITTED)
