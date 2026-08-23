@@ -71,6 +71,7 @@ model User {
   quotations    Quotation[]
   auditLogs     AuditLog[]     @relation("AuditActor")
   stockMovements StockMovement[]
+  orderStatusHistories OrderStatusHistory[]
 
   @@map("users")
 }
@@ -252,16 +253,38 @@ model Order {
   total           Decimal     @db.Decimal(15, 2)
   shippingAddress Json        @map("shipping_address")
   customerNote    String?     @map("customer_note") @db.VarChar(500)
+  shippingProvider String?    @map("shipping_provider") @db.VarChar(80)
+  trackingNumber   String?    @map("tracking_number") @db.VarChar(120)
+  shippedAt         DateTime? @map("shipped_at")
+  deliveredAt       DateTime? @map("delivered_at")
+  cancelledAt       DateTime? @map("cancelled_at")
   idempotencyKey  String      @unique @map("idempotency_key") @db.VarChar(100)
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
   user            User        @relation(fields: [userId], references: [id], onDelete: Restrict)
   items           OrderItem[]
   payments        Payment[]
+  statusHistories OrderStatusHistory[]
 
   @@index([userId, createdAt])
   @@index([status])
   @@map("orders")
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(uuid()) @db.Uuid
+  orderId   String      @map("order_id") @db.Uuid
+  actorId   String?     @map("actor_id") @db.Uuid
+  fromStatus OrderStatus @map("from_status")
+  toStatus   OrderStatus @map("to_status")
+  note       String?     @db.VarChar(300)
+  createdAt  DateTime    @default(now()) @map("created_at")
+  order      Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actor      User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([orderId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("order_status_histories")
 }
 
 model OrderItem {

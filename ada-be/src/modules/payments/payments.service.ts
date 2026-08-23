@@ -131,6 +131,14 @@ export class PaymentsService {
               },
             });
           }
+          await tx.orderStatusHistory.create({
+            data: {
+              orderId: order.id,
+              fromStatus: order.status,
+              toStatus: OrderStatus.PAID,
+              note: 'Payment confirmed by Midtrans',
+            },
+          });
           await tx.order.update({
             where: { id: order.id },
             data: { status: OrderStatus.PAID },
@@ -142,9 +150,17 @@ export class PaymentsService {
               data: { reserved: { decrement: item.quantity } },
             });
           }
+          await tx.orderStatusHistory.create({
+            data: {
+              orderId: order.id,
+              fromStatus: order.status,
+              toStatus: OrderStatus.CANCELLED,
+              note: `Midtrans transaction ${dto.transaction_status}`,
+            },
+          });
           await tx.order.update({
             where: { id: order.id },
-            data: { status: OrderStatus.CANCELLED },
+            data: { status: OrderStatus.CANCELLED, cancelledAt: new Date() },
           });
         }
         return tx.payment.update({

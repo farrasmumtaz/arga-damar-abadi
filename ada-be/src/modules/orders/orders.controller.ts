@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -14,6 +15,7 @@ import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface
 import { CheckoutDto } from './dto/checkout.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
 import { OrdersService } from './orders.service';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { UserRole } from '../../generated/prisma/enums';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -41,6 +43,24 @@ export class OrdersController {
   @Roles(UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN)
   findAdmin() {
     return this.ordersService.findAdmin();
+  }
+
+  @Get('admin/:orderId')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  findOneAdmin(@Param('orderId', new ParseUUIDPipe()) orderId: string) {
+    return this.ordersService.findOneAdmin(orderId);
+  }
+
+  @Patch('admin/:orderId/status')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  updateStatus(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('orderId', new ParseUUIDPipe()) orderId: string,
+    @Body() dto: UpdateOrderStatusDto,
+  ) {
+    return this.ordersService.updateStatus(orderId, user.id, dto);
   }
 
   @Get(':orderId')

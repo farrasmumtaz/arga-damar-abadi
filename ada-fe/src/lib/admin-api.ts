@@ -20,7 +20,7 @@ async function adminRequest<T>(path: string): Promise<T> {
 }
 export interface AdminInventory { productId: string; quantity: number; reserved: number; lowStockLevel: number; available: number; isLowStock: boolean; product: { sku: string; name: string; status: string } }
 export interface StockMovement { id: string; quantityBefore: number; quantityDelta: number; quantityAfter: number; reason: string; createdAt: string; actor: { fullName: string; email: string } }
-export interface AdminOrder { id: string; orderNumber: string; status: string; total: string; createdAt: string; user: { fullName: string; email: string }; items: Array<{ id: string }> }
+export interface AdminOrder { id: string; orderNumber: string; status: string; subtotal: string; shippingCost: string; total: string; shippingAddress: Record<string, unknown>; customerNote: string | null; shippingProvider: string | null; trackingNumber: string | null; shippedAt: string | null; deliveredAt: string | null; createdAt: string; user: { fullName: string; email: string; phone?: string | null }; items: Array<{ id: string; sku: string; productName: string; unitPrice: string; quantity: number; subtotal: string }>; payments?: Array<{ id: string; status: string; method: string | null }>; statusHistories?: Array<{ id: string; fromStatus: string; toStatus: string; note: string | null; createdAt: string; actor: { fullName: string; email: string } | null }> }
 export interface AdminQuotation { id: string; quotationNumber: string; projectName: string; status: string; createdAt: string; user: { fullName: string; email: string }; items: Array<{ id: string; description: string; quantity: number; unitPrice: string | null }> }
 export interface AdminProduct { id: string; categoryId: string; brandId: string | null; sku: string; name: string; slug: string; shortDescription: string | null; description: string | null; status: string; price: string; weightGram: number; isFeatured: boolean; category: { name: string }; brand: { name: string } | null; inventory: { quantity: number; reserved: number; lowStockLevel: number } | null }
 export interface CatalogOption { id: string; name: string }
@@ -28,6 +28,7 @@ export async function getAdminInventory() { return adminRequest<{ data: AdminInv
 export async function getInventoryDetail(productId: string) { return adminRequest<AdminInventory>(`/inventory/${productId}`); }
 export async function getStockMovements(productId: string) { return adminRequest<StockMovement[]>(`/inventory/${productId}/movements`); }
 export async function getAdminOrders() { return adminRequest<AdminOrder[]>('/orders/admin/all'); }
+export async function getAdminOrder(id: string) { return adminRequest<AdminOrder>(`/orders/admin/${id}`); }
 export async function getAdminQuotations() { return adminRequest<AdminQuotation[]>('/quotations/admin'); }
 export async function getAdminProducts() { return adminRequest<{ data: AdminProduct[] }>('/products/admin?limit=100'); }
 export async function getAdminProduct(id: string) { return adminRequest<AdminProduct>(`/products/admin/${id}`); }

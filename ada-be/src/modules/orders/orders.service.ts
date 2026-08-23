@@ -9,6 +9,7 @@ import { OrderStatus, ProductStatus } from '../../generated/prisma/enums';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { CheckoutDto } from './dto/checkout.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 
 interface LockedStock {
   quantity: number;
@@ -180,6 +181,83 @@ export class OrdersService {
     });
   }
 
+  async findOneAdmin(orderId: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        user: {
+          select: { id: true, fullName: true, email: true, phone: true },
+        },
+        items: true,
+        payments: { orderBy: { createdAt: 'desc' } },
+        statusHistories: {
+          orderBy: { createdAt: 'desc' },
+          include: { actor: { select: { fullName: true, email: true } } },
+        },
+      },
+    });
+    if (!order) throw new NotFoundException('Order not found');
+    return order;
+  }
+
+  async updateStatus(
+    orderId: string,
+    actorId: string,
+    dto: UpdateOrderStatusDto,
+  ) {
+    const transitions: Partial<Record<OrderStatus, OrderStatus>> = {
+      [OrderStatus.PAID]: OrderStatus.PROCESSING,
+      [OrderStatus.PROCESSING]: OrderStatus.SHIPPED,
+      [OrderStatus.SHIPPED]: OrderStatus.DELIVERED,
+    };
+    return this.prisma.$transaction(
+      async (tx) => {
+        const order = await tx.order.findUnique({ where: { id: orderId } });
+        if (!order) throw new NotFoundException('Order not found');
+        if (transitions[order.status] !== dto.status) {
+          throw new ConflictException(
+            `Invalid order transition: ${order.status} to ${dto.status}`,
+          );
+        }
+        const now = new Date();
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId,
+            actorId,
+            fromStatus: order.status,
+            toStatus: dto.status,
+            note: dto.note ?? null,
+          },
+        });
+        await tx.order.update({
+          where: { id: orderId },
+          data: {
+            status: dto.status,
+            ...(dto.status === OrderStatus.SHIPPED
+              ? {
+                  shippingProvider: dto.shippingProvider,
+                  trackingNumber: dto.trackingNumber,
+                  shippedAt: now,
+                }
+              : {}),
+            ...(dto.status === OrderStatus.DELIVERED
+              ? { deliveredAt: now }
+              : {}),
+          },
+        });
+        return tx.order.findUniqueOrThrow({
+          where: { id: orderId },
+          include: {
+            items: true,
+            payments: true,
+            statusHistories: { orderBy: { createdAt: 'desc' } },
+          },
+        });
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
+  }
+
   async cancel(userId: string, orderId: string) {
     return this.prisma.$transaction(
       async (tx) => {
@@ -199,9 +277,18 @@ export class OrdersService {
             data: { reserved: { decrement: item.quantity } },
           });
         }
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: order.id,
+            actorId: userId,
+            fromStatus: order.status,
+            toStatus: OrderStatus.CANCELLED,
+            note: 'Cancelled by customer',
+          },
+        });
         return tx.order.update({
           where: { id: order.id },
-          data: { status: OrderStatus.CANCELLED },
+          data: { status: OrderStatus.CANCELLED, cancelledAt: new Date() },
           include: orderInclude,
         });
       },
