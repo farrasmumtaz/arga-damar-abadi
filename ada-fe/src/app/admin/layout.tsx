@@ -1,0 +1,20 @@
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { Boxes, FileText, LayoutDashboard, LogOut, Package, ShoppingBag } from 'lucide-react';
+import { logoutAction } from '@/actions/auth.actions';
+import { getSession } from '@/lib/api';
+
+const allowedRoles = new Set(['STAFF', 'ADMIN', 'SUPER_ADMIN']);
+export default async function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const user = await getSession();
+  if (!user) redirect('/login?returnTo=%2Fadmin');
+  if (!allowedRoles.has(user.role)) redirect('/');
+  return <div className="admin-app">
+    <aside className="admin-sidebar">
+      <Link href="/admin" className="admin-brand"><span>AD</span><strong>ARGA DAMAR<small>Admin Console</small></strong></Link>
+      <nav><Link href="/admin"><LayoutDashboard/>Overview</Link><Link href="/admin/products"><Package/>Produk</Link><Link href="/admin/inventory"><Boxes/>Inventory</Link><Link href="/admin/orders"><ShoppingBag/>Orders</Link><Link href="/admin/quotations"><FileText/>Quotation</Link></nav>
+      <div className="admin-profile"><span><strong>{user.fullName}</strong><small>{user.role.replaceAll('_', ' ')}</small></span><form action={logoutAction}><button aria-label="Keluar"><LogOut/></button></form></div>
+    </aside>
+    <div className="admin-workspace"><header><Link href="/">Lihat storefront</Link><span>{new Date().toLocaleDateString('id-ID', { dateStyle: 'long' })}</span></header><main>{children}</main></div>
+  </div>;
+}

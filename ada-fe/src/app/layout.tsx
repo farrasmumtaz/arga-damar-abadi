@@ -1,6 +1,4 @@
 import type { Metadata } from 'next';
-import { SiteFooter } from '@/components/site-footer';
-import { SiteHeader } from '@/components/site-header';
 import '@fontsource/inter/400.css';
 import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
@@ -18,9 +16,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="id">
       <body>
-        <SiteHeader />
-        <main>{children}</main>
-        <SiteFooter />
+        {children}
       </body>
     </html>
   );
