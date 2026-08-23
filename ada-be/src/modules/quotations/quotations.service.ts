@@ -1,6 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '../../generated/prisma/client';
+import { QuotationStatus } from '../../generated/prisma/enums';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
 import { UpdateQuotationDto } from './dto/update-quotation.dto';
@@ -61,13 +67,52 @@ export class QuotationsService {
       },
     });
   }
+  async findOneAdmin(id: string) {
+    const quotation = await this.prisma.quotation.findUnique({
+      where: { id },
+      include: {
+        user: { select: { fullName: true, email: true, phone: true } },
+        items: {
+          include: { product: { select: { name: true, sku: true } } },
+        },
+      },
+    });
+    if (!quotation) throw new NotFoundException('Quotation not found');
+    return quotation;
+  }
   async update(id: string, dto: UpdateQuotationDto) {
     return this.prisma.$transaction(async (tx) => {
       const quotation = await tx.quotation.findUnique({
         where: { id },
-        select: { id: true },
+        include: { items: true },
       });
       if (!quotation) throw new NotFoundException('Quotation not found');
+      const allowed: QuotationStatus[] =
+        quotation.status === QuotationStatus.SUBMITTED
+          ? [QuotationStatus.REVIEWING, QuotationStatus.REJECTED]
+          : quotation.status === QuotationStatus.REVIEWING
+            ? [QuotationStatus.QUOTED, QuotationStatus.REJECTED]
+            : quotation.status === QuotationStatus.QUOTED
+              ? [QuotationStatus.EXPIRED]
+              : [];
+      if (!allowed.includes(dto.status)) {
+        throw new ConflictException(
+          `Invalid quotation transition: ${quotation.status} to ${dto.status}`,
+        );
+      }
+      if (dto.status === QuotationStatus.QUOTED) {
+        if (!dto.validUntil || dto.validUntil <= new Date()) {
+          throw new BadRequestException('Future validUntil is required');
+        }
+        const prices = new Map(
+          dto.items?.map((item) => [item.id, item.unitPrice]) ?? [],
+        );
+        if (quotation.items.some((item) => !prices.has(item.id))) {
+          throw new BadRequestException(
+            'Every quotation item requires a unit price',
+          );
+        }
+      }
       if (dto.items)
         for (const item of dto.items)
           await tx.quotationItem.updateMany({
@@ -79,6 +124,27 @@ export class QuotationsService {
         data: { status: dto.status, validUntil: dto.validUntil },
         include: { items: true },
       });
+    });
+  }
+  async decide(
+    userId: string,
+    id: string,
+    decision: typeof QuotationStatus.ACCEPTED | typeof QuotationStatus.REJECTED,
+  ) {
+    const quotation = await this.prisma.quotation.findFirst({
+      where: { id, userId },
+    });
+    if (!quotation) throw new NotFoundException('Quotation not found');
+    if (quotation.status !== QuotationStatus.QUOTED) {
+      throw new ConflictException('Quotation is not awaiting a decision');
+    }
+    if (quotation.validUntil && quotation.validUntil < new Date()) {
+      throw new ConflictException('Quotation has expired');
+    }
+    return this.prisma.quotation.update({
+      where: { id },
+      data: { status: decision },
+      include: { items: true },
     });
   }
 }

@@ -16,6 +16,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
 import { UpdateQuotationDto } from './dto/update-quotation.dto';
+import { QuotationDecisionDto } from './dto/quotation-decision.dto';
 import { QuotationsService } from './quotations.service';
 
 @Controller('quotations')
@@ -37,6 +38,12 @@ export class QuotationsController {
   findAdmin() {
     return this.service.findAdmin();
   }
+  @Get('admin/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  findOneAdmin(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.service.findOneAdmin(id);
+  }
   @Patch('admin/:id')
   @UseGuards(RolesGuard)
   @Roles(UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN)
@@ -45,6 +52,14 @@ export class QuotationsController {
     @Body() dto: UpdateQuotationDto,
   ) {
     return this.service.update(id, dto);
+  }
+  @Post(':id/decision')
+  decide(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: QuotationDecisionDto,
+  ) {
+    return this.service.decide(user.id, id, dto.decision);
   }
   @Get(':id') findOne(
     @CurrentUser() user: AuthenticatedUser,
