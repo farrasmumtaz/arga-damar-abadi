@@ -5,6 +5,7 @@ import { envValidationSchema } from './common/config/env.validation';
 import { HealthModule } from './health/health.module';
 
 import { AuthModule } from './modules/auth/auth.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { CartsModule } from './modules/carts/carts.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
@@ -25,6 +26,7 @@ import { PrismaModule } from './infrastructure/prisma/prisma.module';
     PrismaModule,
     HealthModule,
     AuthModule,
+    AdminModule,
     UsersModule,
     CatalogModule,
     InventoryModule,

@@ -14,6 +14,9 @@ import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface
 import { CheckoutDto } from './dto/checkout.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
 import { OrdersService } from './orders.service';
+import { UserRole } from '../../generated/prisma/enums';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
@@ -31,6 +34,13 @@ export class OrdersController {
     @Query() query: QueryOrderDto,
   ) {
     return this.ordersService.findMine(user.id, query);
+  }
+
+  @Get('admin/all')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.STAFF, UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  findAdmin() {
+    return this.ordersService.findAdmin();
   }
 
   @Get(':orderId')

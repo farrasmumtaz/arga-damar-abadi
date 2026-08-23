@@ -168,6 +168,18 @@ export class OrdersService {
     return order;
   }
 
+  findAdmin() {
+    return this.prisma.order.findMany({
+      take: 100,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        user: { select: { fullName: true, email: true } },
+        items: true,
+        payments: { orderBy: { createdAt: 'desc' }, take: 1 },
+      },
+    });
+  }
+
   async cancel(userId: string, orderId: string) {
     return this.prisma.$transaction(
       async (tx) => {
