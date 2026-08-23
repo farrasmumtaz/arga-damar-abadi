@@ -14,4 +14,5 @@ export const envValidationSchema = Joi.object({
   JWT_REFRESH_TTL: Joi.string().default('7d'),
   MIDTRANS_SERVER_KEY: Joi.string().optional(),
   MIDTRANS_IS_PRODUCTION: Joi.boolean().default(false),
+  FRONTEND_URL: Joi.string().uri().default('http://localhost:3001'),
 });

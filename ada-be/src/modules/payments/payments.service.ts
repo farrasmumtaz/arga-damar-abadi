@@ -27,11 +27,27 @@ export class PaymentsService {
   async createSession(userId: string, orderId: string) {
     const order = await this.prisma.order.findFirst({
       where: { id: orderId, userId },
-      include: { user: true, items: true },
+      include: { user: true, items: true, payments: true },
     });
     if (!order) throw new NotFoundException('Order not found');
     if (order.status !== OrderStatus.PENDING_PAYMENT)
       throw new ConflictException('Order is not awaiting payment');
+    const pendingPayment = order.payments.find(
+      (payment) => payment.provider === 'MIDTRANS',
+    );
+    const storedPayload = pendingPayment?.providerPayload;
+    if (
+      storedPayload &&
+      typeof storedPayload === 'object' &&
+      !Array.isArray(storedPayload) &&
+      typeof storedPayload.token === 'string' &&
+      typeof storedPayload.redirect_url === 'string'
+    ) {
+      return {
+        token: storedPayload.token,
+        redirect_url: storedPayload.redirect_url,
+      };
+    }
     const key = this.serverKey();
     const baseUrl = this.config.get<boolean>('MIDTRANS_IS_PRODUCTION')
       ? 'https://app.midtrans.com'
@@ -59,6 +75,9 @@ export class PaymentsService {
           quantity: item.quantity,
           name: item.productName,
         })),
+        callbacks: {
+          finish: `${this.config.getOrThrow<string>('FRONTEND_URL')}/payment/finish`,
+        },
       }),
     });
     if (!response.ok)

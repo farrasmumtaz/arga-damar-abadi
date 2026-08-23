@@ -37,7 +37,7 @@ export async function SiteHeader() {
           </Link>
           {user ? (
             <div className="user-menu">
-              <span><UserRound size={17} /> {user.fullName.split(' ')[0]}</span>
+              <Link href="/account/orders"><UserRound size={17} /> {user.fullName.split(' ')[0]}</Link>
               <form action={logoutAction}>
                 <button aria-label="Keluar"><LogOut size={16} /></button>
               </form>

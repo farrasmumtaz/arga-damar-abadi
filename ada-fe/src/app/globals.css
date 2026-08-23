@@ -217,6 +217,16 @@ button { color: inherit; }
 .empty-state > svg { color: var(--gold); }
 
 :focus-visible { outline: 3px solid #c9a227; outline-offset: 3px; }
+.orders-page h1,.order-detail h1 { margin: 0 0 28px; font: 750 42px var(--font-display); }
+.order-list { display: grid; gap: 12px; }
+.order-row { padding: 22px; display: grid; grid-template-columns: 1fr auto auto; gap: 28px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
+.order-row > div { display: grid; gap: 5px; }.order-row small,.order-title p,.order-lines small { color: var(--ink-soft); }
+.status { padding: 7px 10px; color: #7b5810; background: #fff2c8; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: .06em; }
+.status-paid,.status-delivered { color: #17643e; background: #dff4e8; }.status-cancelled,.status-refunded { color: #8d342e; background: #f6e3df; }
+.order-title { display: flex; justify-content: space-between; align-items: start; }.order-title h1 { margin-bottom: 4px; }
+.order-detail-grid { display: grid; grid-template-columns: 1fr 380px; gap: 24px; }.order-lines { display: grid; gap: 10px; }.order-lines article { padding: 20px; display: flex; justify-content: space-between; background: #fff; border: 1px solid var(--line); border-radius: 10px; }.order-lines article > div { display: grid; gap: 5px; }
+.cancel-order { width: 100%; padding: 10px; color: #e8a8a2; border: 0; background: transparent; cursor: pointer; }.shipping-card { margin-top: 24px; padding: 26px; background: #fff; border: 1px solid var(--line); border-radius: 12px; }.shipping-card h2 { margin-top: 0; }.shipping-card p,.shipping-card small { color: var(--ink-soft); }
+.payment-result { min-height: 650px; display: flex; align-items: center; justify-content: center; flex-direction: column; text-align: center; }.payment-result > svg { width: 70px; height: 70px; color: var(--gold); }.payment-result h1 { margin-bottom: 4px; font: 750 42px var(--font-display); }.payment-result p { color: var(--ink-soft); }.payment-result .button { margin-top: 18px; }
 @media (prefers-reduced-motion: reduce) { *,*::before,*::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
 
 @media (max-width: 900px) {

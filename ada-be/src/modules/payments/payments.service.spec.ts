@@ -34,6 +34,7 @@ describe('PaymentsService', () => {
                 status: 'PENDING_PAYMENT',
                 user: {},
                 items: [],
+                payments: [],
               }),
             },
           },
