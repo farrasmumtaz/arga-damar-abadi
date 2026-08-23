@@ -1,0 +1,11 @@
+'use client';
+
+import { useActionState } from 'react';
+import type { InventoryActionState } from '@/actions/admin-inventory.actions';
+
+export function InventoryMutationForm({ adjustmentAction, thresholdAction, lowStockLevel }: { adjustmentAction: (state: InventoryActionState, formData: FormData) => Promise<InventoryActionState>; thresholdAction: (state: InventoryActionState, formData: FormData) => Promise<InventoryActionState>; lowStockLevel: number }) {
+  const [adjustment, adjust, adjusting] = useActionState(adjustmentAction, {});
+  const [threshold, updateThreshold, updating] = useActionState(thresholdAction, {});
+  return <div className="inventory-mutation-grid"><form action={adjust} className="admin-form compact-form"><h2>Adjustment stok</h2><p>Gunakan angka positif untuk stok masuk dan negatif untuk stok keluar.</p><label className="field"><span>Perubahan quantity</span><input name="quantityDelta" type="number" required step="1" min="-1000000" max="1000000"/></label><label className="field"><span>Alasan</span><textarea name="reason" required minLength={3} maxLength={300} rows={3}/></label>{adjustment.error && <p className="form-error">{adjustment.error}</p>}{adjustment.success && <p className="form-success">{adjustment.success}</p>}<button className="button button-primary" disabled={adjusting}>{adjusting ? 'Memproses...' : 'Simpan adjustment'}</button></form>
+    <form action={updateThreshold} className="admin-form compact-form"><h2>Low-stock threshold</h2><p>Peringatan muncul ketika stok tersedia menyentuh batas ini.</p><label className="field"><span>Batas minimum</span><input name="lowStockLevel" type="number" min="0" max="1000000" defaultValue={lowStockLevel} required/></label>{threshold.error && <p className="form-error">{threshold.error}</p>}{threshold.success && <p className="form-success">{threshold.success}</p>}<button className="button button-secondary" disabled={updating}>{updating ? 'Memproses...' : 'Perbarui batas'}</button></form></div>;
+}
