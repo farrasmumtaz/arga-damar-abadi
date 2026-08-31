@@ -90,11 +90,19 @@ export async function registerAction(
   _previousState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
+  const password = String(formData.get('password') ?? '');
+  const passwordConfirmation = String(
+    formData.get('passwordConfirmation') ?? '',
+  );
+  if (password !== passwordConfirmation) {
+    return { error: 'Konfirmasi password tidak sama.' };
+  }
+
   const result = await authenticate('register', {
     fullName: String(formData.get('fullName') ?? ''),
     email: String(formData.get('email') ?? ''),
     phone: String(formData.get('phone') ?? ''),
-    password: String(formData.get('password') ?? ''),
+    password,
   });
   if (!result.data) return { error: result.error };
 

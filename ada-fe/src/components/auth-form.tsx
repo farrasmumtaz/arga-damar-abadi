@@ -1,7 +1,7 @@
 'use client';
 
-import { useActionState } from 'react';
-import { ArrowRight, LockKeyhole, Mail, Phone, UserRound } from 'lucide-react';
+import { useActionState, useState } from 'react';
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Phone, UserRound } from 'lucide-react';
 import type { AuthActionState } from '@/actions/auth.actions';
 
 interface AuthFormProps {
@@ -16,6 +16,8 @@ const initialState: AuthActionState = {};
 
 export function AuthForm({ mode, action }: AuthFormProps) {
   const [state, formAction, pending] = useActionState(action, initialState);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showPasswordConfirmation, setShowPasswordConfirmation] = useState(false);
   const registering = mode === 'register';
 
   return (
@@ -51,15 +53,48 @@ export function AuthForm({ mode, action }: AuthFormProps) {
           <LockKeyhole size={18} />
           <input
             name="password"
-            type="password"
-            minLength={registering ? 12 : undefined}
-            placeholder={registering ? 'Minimal 12 karakter' : 'Password Anda'}
+            type={showPassword ? 'text' : 'password'}
+            minLength={registering ? 8 : undefined}
+            placeholder={registering ? 'Minimal 8 karakter' : 'Password Anda'}
             required
           />
+          <button
+            type="button"
+            className="password-toggle"
+            onClick={() => setShowPassword((visible) => !visible)}
+            aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+            aria-pressed={showPassword}
+          >
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+          </button>
         </div>
       </label>
       {registering && (
-        <p className="password-hint">Gunakan huruf besar, kecil, angka, dan simbol.</p>
+        <>
+          <label className="field">
+            <span>Konfirmasi password</span>
+            <div className="input-shell">
+              <LockKeyhole size={18} />
+              <input
+                name="passwordConfirmation"
+                type={showPasswordConfirmation ? 'text' : 'password'}
+                minLength={8}
+                placeholder="Ulangi password"
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPasswordConfirmation((visible) => !visible)}
+                aria-label={showPasswordConfirmation ? 'Sembunyikan konfirmasi password' : 'Tampilkan konfirmasi password'}
+                aria-pressed={showPasswordConfirmation}
+              >
+                {showPasswordConfirmation ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </label>
+          <p className="password-hint">Gunakan minimal 8 karakter dengan huruf besar, kecil, angka, dan simbol.</p>
+        </>
       )}
       {state.error && <p className="form-error">{state.error}</p>}
       <button className="button button-primary auth-submit" disabled={pending}>
