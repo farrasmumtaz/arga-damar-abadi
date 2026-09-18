@@ -5,7 +5,8 @@ import { categories } from '@/lib/catalog';
 import { getProducts } from '@/lib/catalog-api';
 
 export default async function HomePage() {
-  const products = await getProducts();
+  const catalog = await getProducts().then(products => ({ products, unavailable: false })).catch(() => ({ products: [], unavailable: true }));
+  const products = catalog.products;
   return (
     <>
       <section className="hero">
@@ -53,6 +54,7 @@ export default async function HomePage() {
         <div className="container section">
           <div className="section-heading"><div><p className="eyebrow"><span /> Rekomendasi kami</p><h2>Produk unggulan</h2></div><p className="section-note">Dipilih berdasarkan kualitas, ketahanan, dan kebutuhan pelanggan.</p></div>
           <div className="product-grid">{products.map((product) => <ProductCard key={product.id} product={product} />)}</div>
+          {!products.length && <div className="empty-state"><h3>{catalog.unavailable ? 'Katalog sementara tidak tersedia' : 'Belum ada produk ditampilkan'}</h3><p>{catalog.unavailable ? 'Silakan coba kembali beberapa saat lagi.' : 'Produk akan tampil setelah ditambahkan dan diaktifkan oleh admin.'}</p></div>}
         </div>
       </section>
 

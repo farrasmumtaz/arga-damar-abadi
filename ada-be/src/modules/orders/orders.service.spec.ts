@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { OrdersService } from './orders.service';
 import { ShippingCostService } from './shipping-cost.service';
+import { PromotionsService } from '../promotions/promotions.service';
 
 describe('OrdersService', () => {
   let service: OrdersService;
@@ -20,6 +21,10 @@ describe('OrdersService', () => {
           useValue: {
             order: { findUnique: orderFindUnique, findFirst: orderFindFirst },
           },
+        },
+        {
+          provide: PromotionsService,
+          useValue: { evaluate: jest.fn(), recordRedemption: jest.fn() },
         },
         {
           provide: ShippingCostService,

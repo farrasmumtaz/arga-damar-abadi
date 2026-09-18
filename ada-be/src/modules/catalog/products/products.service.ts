@@ -136,6 +136,32 @@ export class ProductsService {
     return product;
   }
 
+  async recommendations(slug: string) {
+    const source = await this.prisma.product.findFirst({
+      where: { slug, status: ProductStatus.ACTIVE },
+      select: { id: true, categoryId: true, brandId: true },
+    });
+    if (!source) throw new NotFoundException('Product not found');
+    // Category/status index bounds candidates; SQL compares stock columns before LIMIT.
+    const ids = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT p.id FROM products p JOIN inventories i ON i.product_id = p.id
+      WHERE p.category_id = ${source.categoryId}::uuid AND p.status = 'ACTIVE'
+        AND p.id <> ${source.id}::uuid AND i.quantity > i.reserved
+      ORDER BY (p.brand_id = ${source.brandId}::uuid) DESC NULLS LAST, p.is_featured DESC, p.created_at DESC, p.id
+      LIMIT 4`;
+    const products = await this.prisma.product.findMany({
+      where: {
+        id: { in: ids.map((row) => row.id) },
+        status: ProductStatus.ACTIVE,
+      },
+      include: productInclude,
+    });
+    return ids.flatMap((row) => {
+      const product = products.find((p) => p.id === row.id);
+      return product ? [product] : [];
+    });
+  }
+
   async findOneById(id: string) {
     const product = await this.prisma.product.findUnique({
       where: { id },

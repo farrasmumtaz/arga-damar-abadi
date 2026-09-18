@@ -1,0 +1,62 @@
+// Add PURCHASE_RECEIPT to StockMovementType.
+// Add purchaseOrderItems PurchaseOrderItem[] to Product.
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ISSUED
+  RECEIVED
+  CANCELLED
+}
+
+model Supplier {
+  id String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(40)
+  name String @db.VarChar(150)
+  contactName String? @map("contact_name") @db.VarChar(150)
+  email String? @db.VarChar(255)
+  phone String? @db.VarChar(32)
+  address String? @db.VarChar(500)
+  isActive Boolean @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  purchaseOrders PurchaseOrder[]
+  @@index([isActive, name])
+  @@map("suppliers")
+}
+
+model PurchaseOrder {
+  id String @id @default(uuid()) @db.Uuid
+  purchaseNumber String @unique @map("purchase_number") @db.VarChar(40)
+  supplierId String @map("supplier_id") @db.Uuid
+  supplierName String @map("supplier_name") @db.VarChar(150)
+  actorId String @map("actor_id") @db.Uuid
+  status PurchaseOrderStatus @default(DRAFT)
+  total Decimal @db.Decimal(15, 2)
+  note String? @db.VarChar(500)
+  issuedAt DateTime? @map("issued_at")
+  receivedAt DateTime? @map("received_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items PurchaseOrderItem[]
+  @@index([supplierId, createdAt])
+  @@index([status, createdAt])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id String @id @default(uuid()) @db.Uuid
+  purchaseOrderId String @map("purchase_order_id") @db.Uuid
+  productId String @map("product_id") @db.Uuid
+  sku String @db.VarChar(80)
+  productName String @map("product_name") @db.VarChar(200)
+  quantity Int
+  unitCost Decimal @map("unit_cost") @db.Decimal(15, 2)
+  subtotal Decimal @db.Decimal(15, 2)
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  @@unique([purchaseOrderId, productId])
+  @@index([productId])
+  @@map("purchase_order_items")
+}

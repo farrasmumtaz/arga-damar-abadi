@@ -18,11 +18,24 @@ import { CreateQuotationDto } from './dto/create-quotation.dto';
 import { UpdateQuotationDto } from './dto/update-quotation.dto';
 import { QuotationDecisionDto } from './dto/quotation-decision.dto';
 import { QuotationsService } from './quotations.service';
+import { QuotationOrderService } from './quotation-order.service';
+import { ConvertQuotationDto } from './dto/convert-quotation.dto';
 
 @Controller('quotations')
 @UseGuards(JwtAuthGuard)
 export class QuotationsController {
-  constructor(private readonly service: QuotationsService) {}
+  constructor(
+    private readonly service: QuotationsService,
+    private readonly conversion: QuotationOrderService,
+  ) {}
+  @Post(':id/order')
+  convert(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: ConvertQuotationDto,
+  ) {
+    return this.conversion.convert(user.id, id, dto.addressId);
+  }
   @Post() create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateQuotationDto,

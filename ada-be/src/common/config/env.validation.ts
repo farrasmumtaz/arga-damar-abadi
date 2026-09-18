@@ -17,4 +17,25 @@ export const envValidationSchema = Joi.object({
   FRONTEND_URL: Joi.string().uri().default('http://localhost:3001'),
   SHIPPING_BASE_COST: Joi.number().integer().min(0).default(20000),
   SHIPPING_PER_KG_COST: Joi.number().integer().min(0).default(5000),
+  SMTP_HOST: Joi.string().optional(),
+  SUPABASE_URL: Joi.string()
+    .uri({ scheme: ['https', 'http'] })
+    .optional(),
+  SUPABASE_SERVICE_ROLE_KEY: Joi.string().optional(),
+  STORAGE_IMAGES_BUCKET: Joi.string().default('product-images'),
+  STORAGE_BOQ_BUCKET: Joi.string().default('boq-private'),
+  CLAMAV_HOST: Joi.string().optional(),
+  CLAMAV_PORT: Joi.number().port().default(3310),
+  SMTP_PORT: Joi.number().port().default(587),
+  SMTP_SECURE: Joi.boolean().default(false),
+  SMTP_USER: Joi.string().optional(),
+  SMTP_PASSWORD: Joi.string().optional(),
+  MAIL_FROM: Joi.string().optional(),
+  MAINTENANCE_ENABLED: Joi.boolean().default(false),
+  NOTIFICATIONS_ENABLED: Joi.boolean().default(false),
+  ORDER_PAYMENT_TTL_MINUTES: Joi.number()
+    .integer()
+    .min(5)
+    .max(10080)
+    .default(60),
 });

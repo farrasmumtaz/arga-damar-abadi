@@ -1,0 +1,45 @@
+// Merge these fields into existing models:
+// User: promotionRedemptions PromotionRedemption[]
+// Order: promotionCode String? @map("promotion_code") @db.VarChar(40)
+// Order: redemption PromotionRedemption?
+
+enum DiscountKind {
+  FIXED
+  PERCENTAGE
+}
+
+model Promotion {
+  id String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(40)
+  name String @db.VarChar(150)
+  kind DiscountKind
+  amount Decimal @db.Decimal(15, 2)
+  minSubtotal Decimal @default(0) @map("min_subtotal") @db.Decimal(15, 2)
+  maxDiscount Decimal? @map("max_discount") @db.Decimal(15, 2)
+  startsAt DateTime @map("starts_at")
+  endsAt DateTime @map("ends_at")
+  isActive Boolean @default(true) @map("is_active")
+  usageLimit Int @map("usage_limit")
+  perUserLimit Int @default(1) @map("per_user_limit")
+  usedCount Int @default(0) @map("used_count")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  redemptions PromotionRedemption[]
+  @@index([isActive, endsAt])
+  @@map("promotions")
+}
+
+model PromotionRedemption {
+  id String @id @default(uuid()) @db.Uuid
+  promotionId String @map("promotion_id") @db.Uuid
+  orderId String @unique @map("order_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  discountAmount Decimal @map("discount_amount") @db.Decimal(15, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+  promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Restrict)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@index([promotionId, userId])
+  @@index([userId, createdAt])
+  @@map("promotion_redemptions")
+}

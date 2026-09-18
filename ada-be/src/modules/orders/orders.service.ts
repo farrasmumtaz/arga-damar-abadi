@@ -11,6 +11,8 @@ import { CheckoutDto } from './dto/checkout.dto';
 import { QueryOrderDto } from './dto/query-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { ShippingCostService } from './shipping-cost.service';
+import { queueNotification } from '../notifications/queue-notification';
+import { PromotionsService } from '../promotions/promotions.service';
 
 interface LockedStock {
   quantity: number;
@@ -27,6 +29,7 @@ export class OrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly shippingCostService: ShippingCostService,
+    private readonly promotions: PromotionsService,
   ) {}
 
   async checkout(userId: string, dto: CheckoutDto) {
@@ -57,12 +60,36 @@ export class OrdersService {
                 },
               },
             });
-            if (!cart?.items.length)
+            const checkoutItems = [...(cart?.items ?? [])].map((item) => ({
+              productId: item.productId,
+              product: item.product,
+              quantity: item.quantity,
+            }));
+            if (dto.productId) {
+              const product = await tx.product.findUnique({
+                where: { id: dto.productId },
+              });
+              if (!product) throw new NotFoundException('Product not found');
+              const existingItem = checkoutItems.find(
+                (item) => item.productId === product.id,
+              );
+              if (existingItem) existingItem.quantity += 1;
+              else
+                checkoutItems.push({
+                  productId: product.id,
+                  product,
+                  quantity: 1,
+                });
+            }
+            checkoutItems.sort((a, b) =>
+              a.productId.localeCompare(b.productId),
+            );
+            if (!checkoutItems.length)
               throw new ConflictException('Cart is empty');
 
             let subtotal = new Prisma.Decimal(0);
             let totalWeightGram = 0;
-            for (const item of cart.items) {
+            for (const item of checkoutItems) {
               if (item.product.status !== ProductStatus.ACTIVE) {
                 throw new ConflictException(
                   `${item.product.name} is no longer available`,
@@ -87,9 +114,25 @@ export class OrdersService {
               totalWeightGram += item.product.weightGram * item.quantity;
             }
 
-            const shippingCost = new Prisma.Decimal(
-              this.shippingCostService.calculate(totalWeightGram),
+            const shippingRate = this.shippingCostService.resolve(
+              totalWeightGram,
+              subtotal.toString(),
+              userId,
+              address.id,
+              address.postalCode,
+              dto.shippingQuote,
             );
+            const shippingCost = new Prisma.Decimal(shippingRate.amount);
+            const promotion = dto.promotionCode
+              ? await this.promotions.evaluate(
+                  tx,
+                  dto.promotionCode,
+                  userId,
+                  subtotal,
+                )
+              : null;
+            const discountAmount =
+              promotion?.discountAmount ?? new Prisma.Decimal(0);
             const order = await tx.order.create({
               data: {
                 userId,
@@ -97,7 +140,10 @@ export class OrdersService {
                 idempotencyKey: dto.idempotencyKey,
                 subtotal,
                 shippingCost,
-                total: subtotal.plus(shippingCost),
+                shippingProvider: shippingRate.provider,
+                promotionCode: promotion?.code ?? null,
+                discountAmount,
+                total: subtotal.plus(shippingCost).minus(discountAmount),
                 customerNote: dto.customerNote ?? null,
                 shippingAddress: {
                   label: address.label,
@@ -110,7 +156,7 @@ export class OrdersService {
                   postalCode: address.postalCode,
                 },
                 items: {
-                  create: cart.items.map((item) => ({
+                  create: checkoutItems.map((item) => ({
                     productId: item.productId,
                     sku: item.product.sku,
                     productName: item.product.name,
@@ -122,7 +168,22 @@ export class OrdersService {
               },
               include: orderInclude,
             });
-            await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+            if (promotion)
+              await this.promotions.recordRedemption(
+                tx,
+                promotion,
+                order.id,
+                userId,
+              );
+            if (cart)
+              await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+            await queueNotification(
+              tx,
+              userId,
+              `order:${order.id}:created`,
+              `Order ${order.orderNumber} dibuat`,
+              'Pesanan menunggu pembayaran. Buka akun Anda untuk melihat rincian dan melanjutkan pembayaran.',
+            );
             return order;
           },
           { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -253,6 +314,13 @@ export class OrdersService {
               : {}),
           },
         });
+        await queueNotification(
+          tx,
+          order.userId,
+          `order:${order.id}:${dto.status}`,
+          `Order ${order.orderNumber}: ${dto.status}`,
+          `Status pesanan menjadi ${dto.status}. Lihat detail pengiriman di akun Anda.`,
+        );
         return tx.order.findUniqueOrThrow({
           where: { id: orderId },
           include: {
@@ -269,14 +337,20 @@ export class OrdersService {
   async cancel(userId: string, orderId: string) {
     return this.prisma.$transaction(
       async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "orders" WHERE "id" = ${orderId}::uuid FOR UPDATE`;
         const order = await tx.order.findFirst({
           where: { id: orderId, userId },
-          include: { items: true },
+          include: { items: true, payments: true },
         });
         if (!order) throw new NotFoundException('Order not found');
         if (order.status !== OrderStatus.PENDING_PAYMENT) {
           throw new ConflictException(
             'Only pending payment orders can be cancelled',
+          );
+        }
+        if (order.payments.some((payment) => payment.provider === 'MIDTRANS')) {
+          throw new ConflictException(
+            'Pembayaran sudah diterbitkan. Tunggu pembatalan atau kedaluwarsa dikonfirmasi provider sebelum stok dilepas.',
           );
         }
         for (const item of order.items) {

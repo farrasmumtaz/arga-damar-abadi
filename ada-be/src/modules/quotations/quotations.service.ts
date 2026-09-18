@@ -10,15 +10,15 @@ import { QuotationStatus } from '../../generated/prisma/enums';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { CreateQuotationDto } from './dto/create-quotation.dto';
 import { UpdateQuotationDto } from './dto/update-quotation.dto';
+import { queueNotification } from '../notifications/queue-notification';
 
 @Injectable()
 export class QuotationsService {
   constructor(private readonly prisma: PrismaService) {}
   async create(userId: string, dto: CreateQuotationDto) {
-    if (dto.items.some((item) => !item.productId)) {
-      return this.createRecord(userId, dto);
-    }
-    const ids = dto.items.map((item) => item.productId as string);
+    const ids = dto.items.flatMap((item) =>
+      item.productId ? [item.productId] : [],
+    );
     const products = await this.prisma.product.findMany({
       where: { id: { in: ids } },
       select: { id: true },
@@ -29,18 +29,36 @@ export class QuotationsService {
   }
   private createRecord(userId: string, dto: CreateQuotationDto) {
     const date = new Date().toISOString().slice(0, 10).replaceAll('-', '');
-    return this.prisma.quotation.create({
-      data: {
+    return this.prisma.$transaction(async (tx) => {
+      if (dto.attachmentId) {
+        await tx.$queryRaw`SELECT "id" FROM "media_assets" WHERE "id" = ${dto.attachmentId}::uuid FOR UPDATE`;
+        const attachment = await tx.mediaAsset.findFirst({
+          where: { id: dto.attachmentId, ownerId: userId, purpose: 'BOQ' },
+        });
+        if (!attachment) throw new NotFoundException('Attachment not found');
+      }
+      const quotation = await tx.quotation.create({
+        data: {
+          userId,
+          quotationNumber: `QUO-${date}-${randomUUID().slice(0, 8).toUpperCase()}`,
+          projectName: dto.projectName,
+          companyName: dto.companyName ?? null,
+          contactName: dto.contactName,
+          contactPhone: dto.contactPhone,
+          notes: dto.notes ?? null,
+          attachmentId: dto.attachmentId,
+          items: { create: dto.items },
+        },
+        include: { items: true },
+      });
+      await queueNotification(
+        tx,
         userId,
-        quotationNumber: `QUO-${date}-${randomUUID().slice(0, 8).toUpperCase()}`,
-        projectName: dto.projectName,
-        companyName: dto.companyName ?? null,
-        contactName: dto.contactName,
-        contactPhone: dto.contactPhone,
-        notes: dto.notes ?? null,
-        items: { create: dto.items },
-      },
-      include: { items: true },
+        `quotation:${quotation.id}:submitted`,
+        `Permintaan ${quotation.quotationNumber}`,
+        'Permintaan penawaran Anda telah diterima.',
+      );
+      return quotation;
     });
   }
   findMine(userId: string) {
@@ -82,6 +100,7 @@ export class QuotationsService {
   }
   async update(id: string, dto: UpdateQuotationDto) {
     return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "quotations" WHERE "id" = ${id}::uuid FOR UPDATE`;
       const quotation = await tx.quotation.findUnique({
         where: { id },
         include: { items: true },
@@ -119,6 +138,13 @@ export class QuotationsService {
             where: { id: item.id, quotationId: id },
             data: { unitPrice: new Prisma.Decimal(item.unitPrice) },
           });
+      await queueNotification(
+        tx,
+        quotation.userId,
+        `quotation:${id}:${dto.status}`,
+        `Penawaran ${quotation.quotationNumber}: ${dto.status}`,
+        'Status penawaran diperbarui. Buka akun Anda untuk melihat rincian harga dan masa berlaku.',
+      );
       return tx.quotation.update({
         where: { id },
         data: { status: dto.status, validUntil: dto.validUntil },
@@ -131,20 +157,23 @@ export class QuotationsService {
     id: string,
     decision: typeof QuotationStatus.ACCEPTED | typeof QuotationStatus.REJECTED,
   ) {
-    const quotation = await this.prisma.quotation.findFirst({
-      where: { id, userId },
-    });
-    if (!quotation) throw new NotFoundException('Quotation not found');
-    if (quotation.status !== QuotationStatus.QUOTED) {
-      throw new ConflictException('Quotation is not awaiting a decision');
-    }
-    if (quotation.validUntil && quotation.validUntil < new Date()) {
-      throw new ConflictException('Quotation has expired');
-    }
-    return this.prisma.quotation.update({
-      where: { id },
-      data: { status: decision },
-      include: { items: true },
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "quotations" WHERE "id" = ${id}::uuid FOR UPDATE`;
+      const quotation = await tx.quotation.findFirst({
+        where: { id, userId },
+      });
+      if (!quotation) throw new NotFoundException('Quotation not found');
+      if (quotation.status !== QuotationStatus.QUOTED) {
+        throw new ConflictException('Quotation is not awaiting a decision');
+      }
+      if (quotation.validUntil && quotation.validUntil < new Date()) {
+        throw new ConflictException('Quotation has expired');
+      }
+      return tx.quotation.update({
+        where: { id },
+        data: { status: decision },
+        include: { items: true },
+      });
     });
   }
 }

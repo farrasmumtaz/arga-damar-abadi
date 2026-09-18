@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditInterceptor } from './common/observability/http-observability';
+import { MediaModule } from './modules/media/media.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { envValidationSchema } from './common/config/env.validation';
 import { HealthModule } from './health/health.module';
 
@@ -16,6 +20,10 @@ import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './infrastructure/prisma/prisma.module';
 
 @Module({
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
+  ],
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
@@ -24,6 +32,8 @@ import { PrismaModule } from './infrastructure/prisma/prisma.module';
     }),
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
     PrismaModule,
+    MediaModule,
+    NotificationsModule,
     HealthModule,
     AuthModule,
     AdminModule,

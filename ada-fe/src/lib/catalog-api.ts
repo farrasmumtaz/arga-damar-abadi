@@ -1,5 +1,4 @@
-import { apiRequest } from './api';
-import { findProduct as findFallbackProduct, products as fallbackProducts } from './catalog';
+import { apiRequest, ApiError } from './api';
 import type { Product } from './types';
 
 interface ApiProduct {
@@ -50,6 +49,7 @@ function mapProduct(product: ApiProduct, index = 0): Product {
     ),
     imageUrl: product.images[0]?.url ?? null,
     imageAlt: product.images[0]?.altText ?? product.name,
+    photos: product.images.map(image => ({ url: image.url, alt: image.altText ?? product.name })),
     featured: product.isFeatured,
     accent: visual.accent,
     icon: visual.icon,
@@ -57,20 +57,22 @@ function mapProduct(product: ApiProduct, index = 0): Product {
 }
 
 export async function getProducts(): Promise<Product[]> {
-  try {
     const response = await apiRequest<ProductPageResponse>(
       '/products?limit=8&sortBy=createdAt&sortDirection=desc',
     );
     return response.data.map(mapProduct);
-  } catch {
-    return fallbackProducts;
-  }
 }
 
 export async function getProduct(slug: string): Promise<Product | undefined> {
   try {
     return mapProduct(await apiRequest<ApiProduct>(`/products/${slug}`));
-  } catch {
-    return findFallbackProduct(slug);
+  } catch (error: unknown) {
+    if (error instanceof ApiError && error.status === 404) return undefined;
+    throw error;
   }
+}
+
+export async function getRecommendations(slug: string): Promise<Product[]> {
+  try { return (await apiRequest<ApiProduct[]>(`/products/${encodeURIComponent(slug)}/recommendations`)).map(mapProduct); }
+  catch { return []; }
 }

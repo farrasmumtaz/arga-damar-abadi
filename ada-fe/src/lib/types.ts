@@ -11,6 +11,7 @@ export interface Product {
   stock: number;
   imageUrl?: string | null;
   imageAlt?: string;
+  photos?: Array<{ url: string; alt: string }>;
   featured: boolean;
   accent: string;
   icon: 'drill' | 'lamp' | 'pump' | 'cable' | 'helmet' | 'meter';

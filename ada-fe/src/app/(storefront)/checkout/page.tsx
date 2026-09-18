@@ -8,6 +8,7 @@ import { getCart } from '@/lib/cart-api';
 import { formatPrice } from '@/lib/catalog';
 import { getProduct } from '@/lib/catalog-api';
 import { getAddresses } from '@/lib/user-api';
+import { randomUUID } from 'node:crypto';
 
 export default async function CheckoutPage({
   searchParams,
@@ -22,12 +23,15 @@ export default async function CheckoutPage({
   if (!user) redirect(`/login?returnTo=${encodeURIComponent(returnTo)}`);
 
   const product = query.product ? await getProduct(query.product) : undefined;
-  const cart = product ? null : await getCart();
+  const cart = await getCart();
   const addresses = await getAddresses();
-  const subtotal = product?.price ?? cart?.subtotal ?? 0;
-  const checkoutItems = product
-    ? [{ id: product.id, product, quantity: 1, subtotal: product.price }]
-    : (cart?.items ?? []);
+  const checkoutItems = [...(cart?.items ?? [])].map((item) => ({ id: item.id, product: item.product, quantity: item.quantity, subtotal: item.subtotal }));
+  if (product) {
+    const existing = checkoutItems.find((item) => item.product.id === product.id);
+    if (existing) { existing.quantity += 1; existing.subtotal += product.price; }
+    else checkoutItems.push({ id: product.id, product, quantity: 1, subtotal: product.price });
+  }
+  const subtotal = checkoutItems.reduce((sum, item) => sum + item.subtotal, 0);
 
   return (
     <section className="container checkout-page section">
@@ -59,7 +63,7 @@ export default async function CheckoutPage({
             <p className="total">
               <span>Total sementara</span><strong>{formatPrice(subtotal)}</strong>
             </p>
-            <CheckoutForm addresses={addresses} productId={product?.id} />
+            <CheckoutForm addresses={addresses} productId={product?.id} idempotencyKey={randomUUID()} />
             <small><CheckCircle2 size={14} /> Pembayaran terenkripsi dan aman</small>
           </aside>
         </div>

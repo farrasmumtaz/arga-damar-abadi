@@ -8,6 +8,9 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { MailService } from '../../infrastructure/mail/mail.service';
+import { AccountRecoveryController } from './account-recovery.controller';
+import { AccountRecoveryService } from './account-recovery.service';
 
 @Module({
   imports: [
@@ -20,8 +23,15 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       }),
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, JwtAuthGuard, RolesGuard],
+  controllers: [AuthController, AccountRecoveryController],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    JwtAuthGuard,
+    RolesGuard,
+    AccountRecoveryService,
+    MailService,
+  ],
   exports: [AuthService, JwtAuthGuard, RolesGuard],
 })
 export class AuthModule {}

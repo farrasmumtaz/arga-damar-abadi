@@ -20,6 +20,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <h1>Masuk ke akun Anda</h1>
         <p>Kelola pesanan dan lanjutkan pembayaran dengan aman.</p>
         <AuthForm mode="login" action={action} />
+        <p className="auth-switch"><Link href="/forgot-password">Lupa password?</Link></p>
         <p className="auth-switch">
           Belum memiliki akun?{' '}
           <Link href={`/register?returnTo=${encodeURIComponent(returnTo)}`}>

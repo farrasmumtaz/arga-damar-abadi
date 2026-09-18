@@ -11,7 +11,7 @@ export interface AuthActionState {
 }
 
 function safeReturnTo(value: string): string {
-  return value.startsWith('/') && !value.startsWith('//') ? value : '/';
+  return value.startsWith('/') && !value.startsWith('//') && !/[\\\u0000-\u001f]/.test(value) ? value : '/';
 }
 
 async function authenticate(
@@ -101,7 +101,7 @@ export async function registerAction(
   const result = await authenticate('register', {
     fullName: String(formData.get('fullName') ?? ''),
     email: String(formData.get('email') ?? ''),
-    phone: String(formData.get('phone') ?? ''),
+    ...(String(formData.get('phone') ?? '').trim() ? { phone: String(formData.get('phone')).trim() } : {}),
     password,
   });
   if (!result.data) return { error: result.error };

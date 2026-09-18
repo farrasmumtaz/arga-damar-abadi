@@ -54,6 +54,11 @@ export class ProductsController {
     return this.productsService.findOneBySlug(slug);
   }
 
+  @Get(':slug/recommendations')
+  recommendations(@Param('slug') slug: string) {
+    return this.productsService.recommendations(slug);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(...catalogRoles)

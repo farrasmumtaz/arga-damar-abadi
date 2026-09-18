@@ -1,3 +1,112 @@
+// Merge these fields into existing models:
+// User: promotionRedemptions PromotionRedemption[]
+// Order: promotionCode String? @map("promotion_code") @db.VarChar(40)
+// Order: redemption PromotionRedemption?
+
+enum DiscountKind {
+  FIXED
+  PERCENTAGE
+}
+
+model Promotion {
+  id String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(40)
+  name String @db.VarChar(150)
+  kind DiscountKind
+  amount Decimal @db.Decimal(15, 2)
+  minSubtotal Decimal @default(0) @map("min_subtotal") @db.Decimal(15, 2)
+  maxDiscount Decimal? @map("max_discount") @db.Decimal(15, 2)
+  startsAt DateTime @map("starts_at")
+  endsAt DateTime @map("ends_at")
+  isActive Boolean @default(true) @map("is_active")
+  usageLimit Int @map("usage_limit")
+  perUserLimit Int @default(1) @map("per_user_limit")
+  usedCount Int @default(0) @map("used_count")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  redemptions PromotionRedemption[]
+  @@index([isActive, endsAt])
+  @@map("promotions")
+}
+
+model PromotionRedemption {
+  id String @id @default(uuid()) @db.Uuid
+  promotionId String @map("promotion_id") @db.Uuid
+  orderId String @unique @map("order_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  discountAmount Decimal @map("discount_amount") @db.Decimal(15, 2)
+  createdAt DateTime @default(now()) @map("created_at")
+  promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Restrict)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  @@index([promotionId, userId])
+  @@index([userId, createdAt])
+  @@map("promotion_redemptions")
+}
+
+// Add PURCHASE_RECEIPT to StockMovementType.
+// Add purchaseOrderItems PurchaseOrderItem[] to Product.
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ISSUED
+  RECEIVED
+  CANCELLED
+}
+
+model Supplier {
+  id String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(40)
+  name String @db.VarChar(150)
+  contactName String? @map("contact_name") @db.VarChar(150)
+  email String? @db.VarChar(255)
+  phone String? @db.VarChar(32)
+  address String? @db.VarChar(500)
+  isActive Boolean @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  purchaseOrders PurchaseOrder[]
+  @@index([isActive, name])
+  @@map("suppliers")
+}
+
+model PurchaseOrder {
+  id String @id @default(uuid()) @db.Uuid
+  purchaseNumber String @unique @map("purchase_number") @db.VarChar(40)
+  supplierId String @map("supplier_id") @db.Uuid
+  supplierName String @map("supplier_name") @db.VarChar(150)
+  actorId String @map("actor_id") @db.Uuid
+  status PurchaseOrderStatus @default(DRAFT)
+  total Decimal @db.Decimal(15, 2)
+  note String? @db.VarChar(500)
+  issuedAt DateTime? @map("issued_at")
+  receivedAt DateTime? @map("received_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items PurchaseOrderItem[]
+  @@index([supplierId, createdAt])
+  @@index([status, createdAt])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id String @id @default(uuid()) @db.Uuid
+  purchaseOrderId String @map("purchase_order_id") @db.Uuid
+  productId String @map("product_id") @db.Uuid
+  sku String @db.VarChar(80)
+  productName String @map("product_name") @db.VarChar(200)
+  quantity Int
+  unitCost Decimal @map("unit_cost") @db.Decimal(15, 2)
+  subtotal Decimal @db.Decimal(15, 2)
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  @@unique([purchaseOrderId, productId])
+  @@index([productId])
+  @@map("purchase_order_items")
+}
+
 generator client {
   provider     = "prisma-client"
   output       = "../src/generated/prisma"
@@ -41,6 +150,8 @@ enum PaymentStatus {
 
 enum StockMovementType {
   ADJUSTMENT
+  REFUND_RESTOCK
+  PURCHASE_RECEIPT
 }
 
 enum QuotationStatus {
@@ -53,6 +164,7 @@ enum QuotationStatus {
 }
 
 model User {
+  promotionRedemptions PromotionRedemption[]
   id            String         @id @default(uuid()) @db.Uuid
   email         String         @unique @db.VarChar(255)
   phone         String?        @unique @db.VarChar(32)
@@ -65,6 +177,7 @@ model User {
   createdAt     DateTime       @default(now()) @map("created_at")
   updatedAt     DateTime       @updatedAt @map("updated_at")
   refreshTokens RefreshToken[]
+  accountTokens AccountToken[]
   addresses     Address[]
   carts         Cart[]
   orders        Order[]
@@ -88,6 +201,26 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_tokens")
+}
+
+enum AccountTokenPurpose {
+  RESET_PASSWORD
+  VERIFY_EMAIL
+}
+
+model AccountToken {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  tokenHash String @unique @map("token_hash") @db.VarChar(64)
+  purpose AccountTokenPurpose
+  expiresAt DateTime @map("expires_at")
+  usedAt DateTime? @map("used_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@index([expiresAt])
+  @@map("account_tokens")
 }
 
 model Category {
@@ -122,6 +255,7 @@ model Brand {
 }
 
 model Product {
+  purchaseOrderItems PurchaseOrderItem[]
   id               String          @id @default(uuid()) @db.Uuid
   categoryId       String          @map("category_id") @db.Uuid
   brandId          String?         @map("brand_id") @db.Uuid
@@ -243,6 +377,10 @@ model Address {
 }
 
 model Order {
+  promotionCode String? @map("promotion_code") @db.VarChar(40)
+  redemption PromotionRedemption?
+  quotationId String? @unique @map("quotation_id") @db.Uuid
+  quotation Quotation? @relation(fields: [quotationId], references: [id], onDelete: Restrict)
   id              String      @id @default(uuid()) @db.Uuid
   userId          String      @map("user_id") @db.Uuid
   orderNumber     String      @unique @map("order_number") @db.VarChar(40)
@@ -265,9 +403,11 @@ model Order {
   items           OrderItem[]
   payments        Payment[]
   statusHistories OrderStatusHistory[]
+  refundRequest RefundRequest?
 
   @@index([userId, createdAt])
   @@index([status])
+  @@index([status, createdAt])
   @@map("orders")
 }
 
@@ -322,7 +462,20 @@ model Payment {
   @@map("payments")
 }
 
+model RefundRequest {
+  id String @id @default(uuid()) @db.Uuid
+  orderId String @unique @map("order_id") @db.Uuid
+  actorId String @map("actor_id") @db.Uuid
+  reason String @db.VarChar(255)
+  restock Boolean @default(false)
+  completedAt DateTime? @map("completed_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  @@map("refund_requests")
+}
+
 model Quotation {
+  order Order?
   id              String          @id @default(uuid()) @db.Uuid
   userId          String          @map("user_id") @db.Uuid
   quotationNumber String          @unique @map("quotation_number") @db.VarChar(40)
@@ -332,6 +485,8 @@ model Quotation {
   contactPhone    String          @map("contact_phone") @db.VarChar(32)
   notes           String?         @db.VarChar(1000)
   attachmentUrl   String?         @map("attachment_url") @db.VarChar(500)
+  attachmentId String? @map("attachment_id") @db.Uuid
+  attachment MediaAsset? @relation(fields: [attachmentId], references: [id], onDelete: Restrict)
   status          QuotationStatus @default(SUBMITTED)
   validUntil      DateTime?       @map("valid_until")
   createdAt       DateTime        @default(now()) @map("created_at")
@@ -341,7 +496,22 @@ model Quotation {
 
   @@index([userId, createdAt])
   @@index([status])
+  @@index([attachmentId])
   @@map("quotations")
+}
+
+model MediaAsset {
+  id String @id @default(uuid()) @db.Uuid
+  ownerId String @map("owner_id") @db.Uuid
+  purpose String @db.VarChar(20)
+  bucket String @db.VarChar(100)
+  objectKey String @unique @map("object_key") @db.VarChar(200)
+  contentType String @map("content_type") @db.VarChar(100)
+  sizeBytes Int @map("size_bytes")
+  createdAt DateTime @default(now()) @map("created_at")
+  quotations Quotation[]
+  @@index([ownerId, createdAt])
+  @@map("media_assets")
 }
 
 model QuotationItem {
@@ -373,4 +543,19 @@ model AuditLog {
   @@index([actorId, createdAt])
   @@index([entityType, entityId])
   @@map("audit_logs")
+}
+
+model Notification {
+  id String @id @default(uuid()) @db.Uuid
+  eventKey String @unique @map("event_key") @db.VarChar(200)
+  recipient String @db.VarChar(255)
+  subject String @db.VarChar(200)
+  body String
+  status String @default("QUEUED") @db.VarChar(20)
+  attempts Int @default(0)
+  nextAttemptAt DateTime @default(now()) @map("next_attempt_at")
+  sentAt DateTime? @map("sent_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([status, nextAttemptAt])
+  @@map("notifications")
 }

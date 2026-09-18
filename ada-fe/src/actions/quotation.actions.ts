@@ -9,7 +9,7 @@ export async function submitQuotationAction(formData: FormData): Promise<void> {
   if (!token) redirect('/login?returnTo=%2Fquotation');
   const response = await fetch(`${API_URL}/quotations`, {
     method: 'POST', cache: 'no-store', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ projectName: formData.get('projectName'), companyName: formData.get('companyName') || undefined, contactName: formData.get('contactName'), contactPhone: formData.get('contactPhone'), notes: formData.get('notes') || undefined, items: [{ productId: formData.get('productId'), description: 'Permintaan produk katalog', quantity: Number(formData.get('quantity')) }] }),
+    body: JSON.stringify({ projectName: formData.get('projectName'), companyName: formData.get('companyName') || undefined, contactName: formData.get('contactName'), contactPhone: formData.get('contactPhone'), notes: formData.get('notes') || undefined, attachmentId: formData.get('attachmentId') || undefined, items: [{ productId: formData.get('productId'), description: 'Permintaan produk katalog', quantity: Number(formData.get('quantity')) }] }),
   });
   if (!response.ok) redirect('/quotation?error=submit');
   redirect('/quotation?success=1');

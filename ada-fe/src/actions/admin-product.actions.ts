@@ -41,12 +41,12 @@ async function mutate(path: string, method: string, body?: unknown): Promise<str
 }
 export async function createProductAction(_state: ProductActionState, formData: FormData): Promise<ProductActionState> {
   const error = await mutate('/products', 'POST', payload(formData));
-  if (error) return { error }; revalidatePath('/admin/products'); redirect('/admin/products');
+  if (error) return { error }; revalidatePath('/admin/products'); revalidatePath('/'); revalidatePath('/products/[slug]', 'page'); redirect('/admin/products');
 }
 export async function updateProductAction(id: string, _state: ProductActionState, formData: FormData): Promise<ProductActionState> {
   const { initialStock: _initialStock, ...data } = payload(formData);
   const error = await mutate(`/products/${id}`, 'PATCH', data);
-  if (error) return { error }; revalidatePath('/admin/products'); redirect('/admin/products');
+  if (error) return { error }; revalidatePath('/admin/products'); revalidatePath('/'); revalidatePath('/products/[slug]', 'page'); redirect('/admin/products');
 }
 export async function deleteProductAction(id: string): Promise<void> {
   const error = await mutate(`/products/${id}`, 'DELETE');

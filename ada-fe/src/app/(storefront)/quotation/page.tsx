@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { getProducts } from '@/lib/catalog-api';
 import { submitQuotationAction } from '@/actions/quotation.actions';
+import { MediaUpload } from '@/components/media-upload';
 
 export const metadata: Metadata = { title: 'Minta Penawaran' };
 
@@ -19,6 +20,7 @@ export default async function QuotationPage({ searchParams }: { searchParams: Pr
       </div>
       <form className="quotation-form" action={submitQuotationAction}>
         <h2>Detail permintaan</h2>
+        <MediaUpload purpose="boq" />
         {query.success && <p className="form-success">Permintaan penawaran berhasil dikirim.</p>}
         {query.error && <p className="form-error">Permintaan gagal dikirim. Periksa data dan coba kembali.</p>}
         <label className="field"><span>Nama proyek</span><input name="projectName" placeholder="Pengadaan instalasi listrik" required /></label>
