@@ -1,0 +1,59 @@
+name: arga-damar
+services:
+  migrate:
+    build:
+      context: ../ada-be
+      target: migration
+    env_file: .env.backend
+    profiles: [tools]
+    restart: "no"
+  api:
+    build:
+      context: ../ada-be
+      target: production
+    env_file: .env.backend
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      API_PREFIX: api/v1
+      FRONTEND_URL: https://${APP_DOMAIN:?Set APP_DOMAIN}
+      CORS_ORIGINS: https://${APP_DOMAIN:?Set APP_DOMAIN}
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/api/v1/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging: &logging
+      driver: json-file
+      options: { max-size: 10m, max-file: '3' }
+  web:
+    build: ../ada-fe
+    environment:
+      API_URL: http://api:3000/api/v1
+    depends_on:
+      api: { condition: service_healthy }
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3001/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: *logging
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL}
+    ports: ['80:80', '443:443', '443:443/udp']
+    volumes: ['./Caddyfile:/etc/caddy/Caddyfile:ro', 'caddy_data:/data', 'caddy_config:/config']
+    depends_on:
+      web: { condition: service_healthy }
+    restart: unless-stopped
+    logging: *logging
+volumes:
+  caddy_data:
+  caddy_config:

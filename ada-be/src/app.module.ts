@@ -18,6 +18,9 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { QuotationsModule } from './modules/quotations/quotations.module';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './infrastructure/prisma/prisma.module';
+import { ProcurementModule } from './modules/procurement/procurement.module';
+import { TrackingModule } from './modules/orders/tracking.module';
+import { WarehousesModule } from './modules/warehouses/warehouses.module';
 
 @Module({
   providers: [
@@ -32,6 +35,9 @@ import { PrismaModule } from './infrastructure/prisma/prisma.module';
     }),
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 100 }]),
     PrismaModule,
+    ProcurementModule,
+    TrackingModule,
+    WarehousesModule,
     MediaModule,
     NotificationsModule,
     HealthModule,

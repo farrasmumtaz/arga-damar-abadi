@@ -18,6 +18,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import {
   ProcurementQueryDto,
+  ReceivePurchaseOrderDto,
   PurchaseOrderDto,
   SupplierDto,
 } from './dto/procurement.dto';
@@ -81,8 +82,9 @@ export class ProcurementController {
   @Post('orders/:id/receive') receive(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReceivePurchaseOrderDto,
   ) {
-    return this.service.transition(user.id, id, 'receive');
+    return this.service.transition(user.id, id, 'receive', dto.warehouseId);
   }
   @Post('orders/:id/cancel') cancel(
     @CurrentUser() user: AuthenticatedUser,

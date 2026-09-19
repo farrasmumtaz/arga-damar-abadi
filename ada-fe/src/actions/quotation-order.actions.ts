@@ -1,8 +1,8 @@
 'use server';
-import { cookies } from 'next/headers';
+import { getActionAccessToken } from '@/lib/session-server';
 import { redirect } from 'next/navigation';
 export async function quotationOrderAction(id: string, form: FormData): Promise<void> {
-  const token = (await cookies()).get('access_token')?.value;
+  const token = await getActionAccessToken();
   if (!token) redirect('/login');
   const response = await fetch(`${process.env.API_URL ?? 'http://localhost:3000/api/v1'}/quotations/${encodeURIComponent(id)}/order`, { method: 'POST', cache: 'no-store', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ addressId: form.get('addressId') }) });
   const result: unknown = await response.json();

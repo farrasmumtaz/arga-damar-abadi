@@ -130,6 +130,12 @@ suite(
           weightGram: 1000,
           status: 'ACTIVE',
           inventory: { create: { quantity: 1 } },
+          warehouseStocks: {
+            create: {
+              warehouseId: '11111111-1111-4111-8111-111111111111',
+              quantity: 1,
+            },
+          },
         },
       });
       const addresses = await Promise.all([
@@ -202,6 +208,61 @@ suite(
         (await prisma.order.findUniqueOrThrow({ where: { id: order.id } }))
           .status,
       ).toBe('PAID');
+    });
+    it('allocates across warehouses and releases both on customer cancellation', async () => {
+      const session = await register();
+      const destination = await address(session.user.id);
+      const warehouse = await prisma.warehouse.create({
+        data: { code: randomUUID(), name: 'Test secondary' },
+      });
+      const category = await prisma.category.create({
+        data: { name: 'Split stock', slug: randomUUID() },
+      });
+      const product = await prisma.product.create({
+        data: {
+          categoryId: category.id,
+          sku: randomUUID(),
+          slug: randomUUID(),
+          name: 'Split stock',
+          price: 10000,
+          status: 'ACTIVE',
+          inventory: { create: { quantity: 5 } },
+          warehouseStocks: {
+            create: [
+              {
+                warehouseId: '11111111-1111-4111-8111-111111111111',
+                quantity: 2,
+              },
+              { warehouseId: warehouse.id, quantity: 3 },
+            ],
+          },
+        },
+      });
+      await request(app.getHttpServer() as Server)
+        .post('/api/v1/cart/items')
+        .auth(session.accessToken, { type: 'bearer' })
+        .send({ productId: product.id, quantity: 4 })
+        .expect(201);
+      const order = await orders.checkout(session.user.id, {
+        addressId: destination.id,
+        idempotencyKey: randomUUID(),
+      });
+      const allocations = await prisma.orderAllocation.findMany({
+        where: { orderId: order.id },
+      });
+      expect(allocations).toHaveLength(2);
+      expect(allocations.map((row) => row.quantity)).toEqual([2, 2]);
+      await orders.cancel(session.user.id, order.id);
+      const stocks = await prisma.warehouseStock.findMany({
+        where: { productId: product.id },
+      });
+      expect(stocks.reduce((sum, row) => sum + row.quantity, 0)).toBe(5);
+      expect(stocks.reduce((sum, row) => sum + row.reserved, 0)).toBe(0);
+      expect(
+        await prisma.orderAllocation.count({
+          where: { orderId: order.id, state: 'RELEASED' },
+        }),
+      ).toBe(2);
     });
     it('consumes password reset once and revokes access and refresh sessions', async () => {
       const session = await register();

@@ -10,6 +10,7 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { QueryProductDto } from './dto/query-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { adjustWarehouseStock } from '../../warehouses/warehouse-stock';
 
 const productInclude = {
   category: { select: { id: true, name: true, slug: true } },
@@ -27,37 +28,41 @@ export class ProductsService {
     const slug = await this.createUniqueSlug(dto.slug ?? dto.name);
 
     try {
-      return await this.prisma.product.create({
-        data: {
-          categoryId: dto.categoryId,
-          brandId: dto.brandId ?? null,
-          sku: dto.sku.trim().toUpperCase(),
-          name: dto.name.trim(),
-          slug,
-          shortDescription: dto.shortDescription?.trim() ?? null,
-          description: dto.description?.trim() ?? null,
-          specifications: this.toJson(dto.specifications),
-          price: new Prisma.Decimal(dto.price),
-          weightGram: dto.weightGram ?? 0,
-          status: dto.status ?? ProductStatus.DRAFT,
-          isFeatured: dto.isFeatured ?? false,
-          images: dto.images?.length
-            ? {
-                create: dto.images.map((image, index) => ({
-                  url: image.url,
-                  altText: image.altText?.trim() ?? dto.name.trim(),
-                  sortOrder: image.sortOrder ?? index,
-                })),
-              }
-            : undefined,
-          inventory: {
-            create: {
-              quantity: dto.initialStock ?? 0,
-              lowStockLevel: dto.lowStockLevel ?? 5,
+      return await this.prisma.$transaction(async (tx) => {
+        const product = await tx.product.create({
+          data: {
+            categoryId: dto.categoryId,
+            brandId: dto.brandId ?? null,
+            sku: dto.sku.trim().toUpperCase(),
+            name: dto.name.trim(),
+            slug,
+            shortDescription: dto.shortDescription?.trim() ?? null,
+            description: dto.description?.trim() ?? null,
+            specifications: this.toJson(dto.specifications),
+            price: new Prisma.Decimal(dto.price),
+            weightGram: dto.weightGram ?? 0,
+            status: dto.status ?? ProductStatus.DRAFT,
+            isFeatured: dto.isFeatured ?? false,
+            images: dto.images?.length
+              ? {
+                  create: dto.images.map((image, index) => ({
+                    url: image.url,
+                    altText: image.altText?.trim() ?? dto.name.trim(),
+                    sortOrder: image.sortOrder ?? index,
+                  })),
+                }
+              : undefined,
+            inventory: {
+              create: {
+                quantity: dto.initialStock ?? 0,
+                lowStockLevel: dto.lowStockLevel ?? 5,
+              },
             },
           },
-        },
-        include: productInclude,
+          include: productInclude,
+        });
+        await adjustWarehouseStock(tx, product.id, dto.initialStock ?? 0);
+        return product;
       });
     } catch (error: unknown) {
       this.handlePrismaError(error);

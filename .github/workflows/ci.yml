@@ -54,6 +54,7 @@ jobs:
           cache-dependency-path: ada-fe/package-lock.json
 
       - run: npm ci
+      - run: npm test
       - run: npm run typecheck
       - run: npm run build
         env:
@@ -90,3 +91,16 @@ jobs:
       - run: npm run prisma:generate
       - run: npm run prisma:deploy
       - run: npm run test:e2e -- --runInBand
+
+  container-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [validate, frontend, postgres-integration]
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --target production -t ada-api:ci ada-be
+      - name: Verify production dependencies
+        run: docker run --rm --entrypoint node ada-api:ci -e "require('./dist/app.module.js')"
+      - run: docker build -t ada-web:ci ada-fe
+      - name: Validate proxy configuration
+        run: docker run --rm -e APP_DOMAIN=ci.example.com -e ACME_EMAIL=ci@example.com -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile

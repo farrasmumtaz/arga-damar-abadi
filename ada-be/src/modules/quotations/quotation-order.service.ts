@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { ShippingCostService } from '../orders/shipping-cost.service';
+import { reserveWarehouseStock } from '../warehouses/warehouse-stock';
 
 @Injectable()
 export class QuotationOrderService {
@@ -93,6 +94,14 @@ export class QuotationOrderService {
           items: { create: items },
         },
       });
+      const allocations = new Map<string, number>();
+      for (const item of quote.items)
+        allocations.set(
+          item.product!.id,
+          (allocations.get(item.product!.id) ?? 0) + item.quantity,
+        );
+      for (const [productId, quantity] of allocations)
+        await reserveWarehouseStock(tx, order.id, productId, quantity);
       await tx.auditLog.create({
         data: {
           actorId: userId,

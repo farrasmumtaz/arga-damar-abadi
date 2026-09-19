@@ -38,7 +38,27 @@ describe('PaymentsService state machine', () => {
       payments: [payment],
     };
     const tx = {
-      $queryRaw: jest.fn().mockResolvedValue([]),
+      $queryRaw: jest.fn().mockImplementation((query: unknown) => {
+        const sql = Array.isArray(query) ? query.join('') : '';
+        return Promise.resolve(
+          sql.includes('FROM warehouse_stocks')
+            ? [{ id: 'stock', quantity: 10, reserved: 1 }]
+            : [],
+        );
+      }),
+      orderAllocation: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'allocation',
+            productId: 'product',
+            warehouseId: 'warehouse',
+            quantity: 1,
+            state: paymentStatus === 'PAID' ? 'CONSUMED' : 'RESERVED',
+          },
+        ]),
+        update: jest.fn(),
+      },
+      warehouseStock: { update: jest.fn() },
       order: {
         findFirst: jest.fn().mockResolvedValue(order),
         findUnique: jest.fn().mockResolvedValue(order),

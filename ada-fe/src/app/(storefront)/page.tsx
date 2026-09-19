@@ -1,12 +1,16 @@
 import Link from 'next/link';
 import { ArrowRight, BadgeCheck, Building2, Headphones, PackageCheck, ShieldCheck, Sparkles, Truck } from 'lucide-react';
 import { ProductCard } from '@/components/product-card';
-import { categories } from '@/lib/catalog';
-import { getProducts } from '@/lib/catalog-api';
+import { getProducts, getCatalogOptions } from '@/lib/catalog-api';
 
 export default async function HomePage() {
-  const catalog = await getProducts().then(products => ({ products, unavailable: false })).catch(() => ({ products: [], unavailable: true }));
+  const [catalog, options] = await Promise.all([
+    getProducts().then(products => ({ products, unavailable: false })).catch(() => ({ products: [], unavailable: true })),
+    getCatalogOptions().catch(() => null),
+  ]);
   const products = catalog.products;
+  const categories = options?.categories.slice(0, 6) ?? [];
+  const brands = options?.brands.slice(0, 6) ?? [];
   return (
     <>
       <section className="hero">
@@ -16,10 +20,10 @@ export default async function HomePage() {
             <h1>Material terbaik.<br /><em>Proyek tanpa kompromi.</em></h1>
             <p className="hero-lead">Produk teknik dan material terkurasi untuk menjaga pekerjaan Anda bergerak—tepat mutu, tepat waktu.</p>
             <div className="hero-actions">
-              <Link className="button button-primary" href="#products">Lihat produk <ArrowRight size={18} /></Link>
+              <Link className="button button-primary" href="/products">Lihat produk <ArrowRight size={18} /></Link>
               <Link className="button button-secondary" href="/quotation">Minta penawaran</Link>
             </div>
-            <div className="hero-proof"><span><strong>500+</strong> Produk</span><span><strong>40+</strong> Brand</span><span><strong>12 th</strong> Pengalaman</span></div>
+            <div className="hero-proof"><span><strong>Katalog publik</strong> Tanpa login</span><span><strong>Pengadaan proyek</strong> Penawaran khusus</span></div>
           </div>
           <div className="hero-art" aria-hidden="true">
             <span className="blueprint-grid" />
@@ -40,19 +44,20 @@ export default async function HomePage() {
       </section>
 
       <section className="section container" id="categories">
-        <div className="section-heading"><div><p className="eyebrow"><span /> Jelajahi</p><h2>Kategori pilihan</h2></div><Link className="text-link" href="#products">Semua produk <ArrowRight size={16} /></Link></div>
+        <div className="section-heading"><div><p className="eyebrow"><span /> Jelajahi</p><h2>Kategori pilihan</h2></div><Link className="text-link" href="/products">Semua produk <ArrowRight size={16} /></Link></div>
         <div className="category-grid">
           {categories.map((category, index) => (
-            <Link href={`/?category=${category.slug}#products`} className="category-card" key={category.slug}>
-              <small>0{index + 1}</small><span className="category-icon">{category.icon}</span><div><h3>{category.name}</h3><p>{category.count} produk</p></div><ArrowRight size={18} />
+            <Link href={`/products?categoryId=${category.id}`} className="category-card" key={category.id}>
+              <small>0{index + 1}</small><div><h3>{category.name}</h3><p>Lihat produk kategori ini</p></div><ArrowRight size={18} />
             </Link>
           ))}
         </div>
+        {!categories.length && <p>{options ? 'Kategori belum tersedia.' : 'Kategori belum dapat dimuat.'}</p>}
       </section>
 
       <section className="products-section" id="products">
         <div className="container section">
-          <div className="section-heading"><div><p className="eyebrow"><span /> Rekomendasi kami</p><h2>Produk unggulan</h2></div><p className="section-note">Dipilih berdasarkan kualitas, ketahanan, dan kebutuhan pelanggan.</p></div>
+          <div className="section-heading"><div><p className="eyebrow"><span /> Dari katalog kami</p><h2>Produk terbaru</h2></div><Link className="text-link" href="/products">Lihat semua produk <ArrowRight size={16}/></Link></div>
           <div className="product-grid">{products.map((product) => <ProductCard key={product.id} product={product} />)}</div>
           {!products.length && <div className="empty-state"><h3>{catalog.unavailable ? 'Katalog sementara tidak tersedia' : 'Belum ada produk ditampilkan'}</h3><p>{catalog.unavailable ? 'Silakan coba kembali beberapa saat lagi.' : 'Produk akan tampil setelah ditambahkan dan diaktifkan oleh admin.'}</p></div>}
         </div>
@@ -63,12 +68,12 @@ export default async function HomePage() {
         <div><p>Tim kami siap menyiapkan penawaran terbaik sesuai kebutuhan dan jadwal proyek Anda.</p><Link className="button button-gold" href="mailto:sales@argadamar.co.id">Minta penawaran <ArrowRight size={18} /></Link></div>
       </section>
 
-      <section className="brand-section container section" aria-label="Brand tersedia">
+      {brands.length > 0 && <section className="brand-section container section" aria-label="Brand tersedia">
         <p className="eyebrow"><span /> Brand terpercaya</p>
         <div className="brand-row">
-          {['PHILIPS', 'MAKITA', 'SUPREME', 'SHIMIZU', 'KYORITSU', 'MSA'].map((brand) => <span key={brand}>{brand}</span>)}
+          {brands.map(brand => <Link href={`/products?brandId=${brand.id}`} key={brand.id}>{brand.name}</Link>)}
         </div>
-      </section>
+      </section>}
 
       <section className="advantages-section">
         <div className="container section">

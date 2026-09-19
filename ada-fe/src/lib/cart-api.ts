@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { apiRequest } from './api';
+import { cache } from 'react';
 import type { Product } from './types';
 
 export interface CartItemView {
@@ -31,6 +32,7 @@ interface ApiCart {
       category: { name: string };
       brand: { name: string } | null;
       inventory: { quantity: number; reserved: number } | null;
+      images: Array<{ url: string; altText: string | null }>;
     };
   }>;
   subtotal: string;
@@ -39,7 +41,7 @@ interface ApiCart {
 
 const icons: Product['icon'][] = ['drill', 'lamp', 'pump', 'cable', 'helmet', 'meter'];
 
-export async function getCart(): Promise<CartView | null> {
+export const getCart = cache(async (): Promise<CartView | null> => {
   const token = (await cookies()).get('access_token')?.value;
   if (!token) return null;
   try {
@@ -68,6 +70,8 @@ export async function getCart(): Promise<CartView | null> {
           unit: 'unit',
           stock: available,
           featured: item.product.isFeatured,
+          imageUrl: item.product.images[0]?.url ?? null,
+          imageAlt: item.product.images[0]?.altText ?? item.product.name,
           accent: ['#c9a227', '#8da8a0', '#7b9eb6'][index % 3] ?? '#c9a227',
           icon: icons[index % icons.length] ?? 'drill',
         };
@@ -80,6 +84,6 @@ export async function getCart(): Promise<CartView | null> {
       }),
     };
   } catch {
-    return { items: [], subtotal: 0, itemCount: 0 };
+    throw new Error('Keranjang belum dapat dimuat');
   }
-}
+});

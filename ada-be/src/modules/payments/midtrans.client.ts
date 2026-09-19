@@ -35,6 +35,7 @@ export class MidtransClient {
         `${base}/v2/${encodeURIComponent(orderNumber)}/${action}`,
         {
           method: action === 'status' ? 'GET' : 'POST',
+          redirect: 'error',
           signal: AbortSignal.timeout(15_000),
           headers: {
             Authorization: `Basic ${Buffer.from(`${key}:`).toString('base64')}`,
@@ -50,6 +51,7 @@ export class MidtransClient {
     const value: unknown = await response.json().catch(() => null);
     if (
       action === 'status' &&
+      (response.ok || response.status === 404) &&
       value &&
       typeof value === 'object' &&
       'status_code' in value &&
@@ -71,7 +73,12 @@ export class MidtransClient {
       typeof value.transaction_id !== 'string' ||
       !('status_code' in value) ||
       typeof value.status_code !== 'string' ||
-      !value.status_code.startsWith('2')
+      !(
+        value.status_code.startsWith('2') ||
+        (action !== 'refund' &&
+          value.status_code === '407' &&
+          value.transaction_status === 'expire')
+      )
     ) {
       throw new BadGatewayException('Midtrans response could not be confirmed');
     }
@@ -90,5 +97,47 @@ export class MidtransClient {
           ? value.fraud_status
           : undefined,
     };
+  }
+
+  async cancelSnap(token: string): Promise<void> {
+    const key = this.config.get<string>('MIDTRANS_SERVER_KEY');
+    if (!key) throw new ConflictException('Midtrans is not configured');
+    const base = this.config.get<boolean>('MIDTRANS_IS_PRODUCTION')
+      ? 'https://app.midtrans.com'
+      : 'https://app.sandbox.midtrans.com';
+    try {
+      const response = await fetch(
+        `${base}/snap/v1/transactions/${encodeURIComponent(token)}/cancel`,
+        {
+          method: 'POST',
+          redirect: 'error',
+          signal: AbortSignal.timeout(15_000),
+          headers: {
+            Authorization: key,
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+          },
+        },
+      );
+      const value: unknown = await response.json();
+      if (value && typeof value === 'object') {
+        if (
+          response.ok &&
+          'canceled_at' in value &&
+          typeof value.canceled_at === 'string' &&
+          Number.isFinite(Date.parse(value.canceled_at))
+        )
+          return;
+        if (
+          'error_messages' in value &&
+          Array.isArray(value.error_messages) &&
+          value.error_messages.includes('token already canceled')
+        )
+          return;
+      }
+    } catch {
+      /* Never release reservations when cancellation cannot be confirmed. */
+    }
+    throw new BadGatewayException('Snap cancellation could not be confirmed');
   }
 }

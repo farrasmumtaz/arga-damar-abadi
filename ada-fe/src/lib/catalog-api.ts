@@ -1,5 +1,6 @@
 import { apiRequest, ApiError } from './api';
 import type { Product } from './types';
+import { catalogApiQuery, type CatalogFilters } from './catalog-query';
 
 interface ApiProduct {
   id: string;
@@ -18,7 +19,21 @@ interface ApiProduct {
 
 interface ProductPageResponse {
   data: ApiProduct[];
-  meta: { total: number };
+  meta: { total: number; page: number; limit: number; totalPages: number };
+}
+
+export interface CatalogOption { id: string; name: string; slug: string }
+export async function getCatalogOptions() {
+  const [categories, brands] = await Promise.all([
+    apiRequest<{ data: CatalogOption[] }>('/categories?isActive=true&limit=100'),
+    apiRequest<{ data: CatalogOption[] }>('/brands?isActive=true&limit=100'),
+  ]);
+  return { categories: categories.data, brands: brands.data };
+}
+
+export async function getCatalogPage(filters: CatalogFilters) {
+  const response = await apiRequest<ProductPageResponse>(`/products?${catalogApiQuery(filters)}`);
+  return { data: response.data.map(mapProduct), meta: response.meta };
 }
 
 const visuals: Array<Pick<Product, 'accent' | 'icon'>> = [

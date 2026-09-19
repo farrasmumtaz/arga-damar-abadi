@@ -13,7 +13,7 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="product-copy">
         <div className="product-meta">
           <span>{product.brand}</span>
-          <span><CircleCheck size={13} /> Stok tersedia</span>
+          <span><CircleCheck size={13} /> {product.stock > 0 ? `${product.stock} tersedia` : 'Stok habis'}</span>
         </div>
         <h3><Link href={`/products/${product.slug}`}>{product.name}</Link></h3>
         <p className="price">{formatPrice(product.price)} <small>/ {product.unit}</small></p>

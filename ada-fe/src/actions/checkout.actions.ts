@@ -1,6 +1,6 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { getActionAccessToken } from '@/lib/session-server';
 import { redirect } from 'next/navigation';
 
 const API_URL = process.env.API_URL ?? 'http://localhost:3000/api/v1';
@@ -22,7 +22,7 @@ async function request<T>(path: string, token: string, init: RequestInit): Promi
 }
 
 export async function checkoutAction(_state: CheckoutState, formData: FormData): Promise<CheckoutState> {
-  const token = (await cookies()).get('access_token')?.value;
+  const token = await getActionAccessToken();
   if (!token) redirect('/login?returnTo=%2Fcheckout');
   let orderId = _state.orderId;
   let addressId = _state.addressId ?? String(formData.get('addressId') ?? '');

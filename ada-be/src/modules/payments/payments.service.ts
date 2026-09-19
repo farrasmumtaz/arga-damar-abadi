@@ -14,6 +14,7 @@ import { MidtransNotificationDto } from './dto/midtrans-notification.dto';
 import { MidtransClient, type MidtransStatus } from './midtrans.client';
 import { RefundDto } from './dto/refund.dto';
 import { queueNotification } from '../notifications/queue-notification';
+import { transitionWarehouseAllocations } from '../warehouses/warehouse-stock';
 
 export interface SnapResponse {
   token: string;
@@ -56,17 +57,23 @@ export class PaymentsService {
           typeof storedPayload.token === 'string' &&
           typeof storedPayload.redirect_url === 'string'
         ) {
-          return {
-            token: storedPayload.token,
-            redirect_url: storedPayload.redirect_url,
-          };
+          return this.validateSnap(storedPayload);
         }
         const key = this.serverKey();
+        const remainingMinutes = Math.floor(
+          (expiry.getTime() - Date.now()) / 60_000,
+        );
+        if (remainingMinutes < 5)
+          throw new ConflictException(
+            'Waktu pembayaran tersisa kurang dari 5 menit; tunggu order kedaluwarsa lalu buat order baru',
+          );
         const baseUrl = this.config.get<boolean>('MIDTRANS_IS_PRODUCTION')
           ? 'https://app.midtrans.com'
           : 'https://app.sandbox.midtrans.com';
+        const itemDetails = this.snapItems(order);
         const response = await fetch(`${baseUrl}/snap/v1/transactions`, {
           method: 'POST',
+          redirect: 'error',
           signal: AbortSignal.timeout(15_000),
           headers: {
             Accept: 'application/json',
@@ -79,43 +86,30 @@ export class PaymentsService {
               gross_amount: order.total.toNumber(),
             },
             expiry: {
+              start_time: `${new Date(order.createdAt.getTime() + 7 * 3_600_000).toISOString().slice(0, 19).replace('T', ' ')} +0700`,
               unit: 'minutes',
-              duration: Math.max(
-                1,
-                Math.ceil((expiry.getTime() - Date.now()) / 60_000),
+              duration: this.config.get<number>(
+                'ORDER_PAYMENT_TTL_MINUTES',
+                60,
               ),
             },
+            page_expiry: { unit: 'minutes', duration: remainingMinutes },
             customer_details: {
               first_name: order.user.fullName,
               email: order.user.email,
               phone: order.user.phone,
             },
-            item_details: [
-              ...order.items.map((item) => ({
-                id: item.sku,
-                price: item.unitPrice.toNumber(),
-                quantity: item.quantity,
-                name: item.productName,
-              })),
-              ...(order.shippingCost.isPositive()
-                ? [
-                    {
-                      id: 'SHIPPING',
-                      price: order.shippingCost.toNumber(),
-                      quantity: 1,
-                      name: 'Biaya pengiriman',
-                    },
-                  ]
-                : []),
-            ],
+            item_details: itemDetails,
             callbacks: {
               finish: `${this.config.getOrThrow<string>('FRONTEND_URL')}/payment/finish`,
             },
           }),
+        }).catch(() => {
+          throw new BadGatewayException('Midtrans is temporarily unavailable');
         });
         if (!response.ok)
           throw new BadGatewayException('Midtrans transaction creation failed');
-        const snap = (await response.json()) as SnapResponse;
+        const snap = this.validateSnap(await response.json().catch(() => null));
         await tx.payment.upsert({
           where: { externalId: order.orderNumber },
           create: {
@@ -146,10 +140,46 @@ export class PaymentsService {
     // Signature doesn't cover transaction_status; obtain authoritative status from the provider.
     const status = await this.midtrans.request(dto.order_id, 'status');
     if (!status) throw new NotFoundException('Payment not found at provider');
+    if (
+      status.transaction_status === 'expire' ||
+      status.transaction_status === 'cancel'
+    ) {
+      const payment = await this.prisma.payment.findUnique({
+        where: { externalId: dto.order_id },
+      });
+      const payload = payment?.providerPayload;
+      if (
+        payment?.status === PaymentStatus.PENDING &&
+        payload &&
+        typeof payload === 'object' &&
+        !Array.isArray(payload) &&
+        typeof payload.token === 'string'
+      )
+        await this.midtrans.cancelSnap(payload.token);
+    }
     return this.applyStatus(status);
   }
 
   async applyStatus(dto: MidtransStatus) {
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        return await this.applyStatusOnce(dto);
+      } catch (error: unknown) {
+        if (
+          attempt < 3 &&
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2034'
+        )
+          continue;
+        throw error;
+      }
+    }
+    throw new ConflictException(
+      'Payment reconciliation could not be completed',
+    );
+  }
+
+  private async applyStatusOnce(dto: MidtransStatus) {
     return this.prisma.$transaction(
       async (tx) => {
         await tx.$queryRaw`SELECT "id" FROM "orders" WHERE "order_number" = ${dto.order_id} FOR UPDATE`;
@@ -166,11 +196,12 @@ export class PaymentsService {
           throw new ConflictException('Payment amount mismatch');
 
         const successful =
-          ['settlement', 'capture'].includes(dto.transaction_status) &&
-          (!dto.fraud_status || dto.fraud_status === 'accept');
-        const expired = ['expire', 'cancel', 'deny'].includes(
-          dto.transaction_status,
-        );
+          (dto.transaction_status === 'settlement' &&
+            (!dto.fraud_status || dto.fraud_status === 'accept')) ||
+          (dto.transaction_status === 'capture' &&
+            dto.fraud_status === 'accept');
+        // A denied Snap attempt is retryable with another method until its page expires.
+        const expired = ['expire', 'cancel'].includes(dto.transaction_status);
         if (payment.status === PaymentStatus.REFUNDED) return payment;
         if (dto.transaction_status === 'refund') {
           if (payment.status !== PaymentStatus.PAID)
@@ -207,6 +238,7 @@ export class PaymentsService {
                 },
               });
             }
+            await transitionWarehouseAllocations(tx, order.id, 'return');
           }
           if (refund)
             await tx.refundRequest.update({
@@ -241,9 +273,8 @@ export class PaymentsService {
         if (
           payment.status === PaymentStatus.PAID ||
           (!successful &&
-            [PaymentStatus.EXPIRED, PaymentStatus.FAILED].includes(
-              payment.status as 'EXPIRED' | 'FAILED',
-            ))
+            (payment.status === PaymentStatus.EXPIRED ||
+              payment.status === PaymentStatus.FAILED))
         )
           return payment;
         if (successful && order.status !== OrderStatus.PENDING_PAYMENT) {
@@ -252,7 +283,9 @@ export class PaymentsService {
           );
         }
         if (successful) {
-          for (const item of order.items) {
+          for (const item of [...order.items].sort((a, b) =>
+            a.productId.localeCompare(b.productId),
+          )) {
             await tx.inventory.update({
               where: { productId: item.productId },
               data: {
@@ -261,6 +294,7 @@ export class PaymentsService {
               },
             });
           }
+          await transitionWarehouseAllocations(tx, order.id, 'consume');
           await tx.orderStatusHistory.create({
             data: {
               orderId: order.id,
@@ -274,12 +308,15 @@ export class PaymentsService {
             data: { status: OrderStatus.PAID },
           });
         } else if (expired && order.status === OrderStatus.PENDING_PAYMENT) {
-          for (const item of order.items) {
+          for (const item of [...order.items].sort((a, b) =>
+            a.productId.localeCompare(b.productId),
+          )) {
             await tx.inventory.update({
               where: { productId: item.productId },
               data: { reserved: { decrement: item.quantity } },
             });
           }
+          await transitionWarehouseAllocations(tx, order.id, 'release');
           await tx.orderStatusHistory.create({
             data: {
               orderId: order.id,
@@ -368,6 +405,13 @@ export class PaymentsService {
       throw new ConflictException(
         'Midtrans transaction must be settled before refund',
       );
+    if (!new Prisma.Decimal(current.gross_amount).equals(order.total))
+      throw new ConflictException('Payment amount mismatch');
+    // Never silently generate a replacement key when provider retry deduplication has expired.
+    if (request.createdAt <= new Date(Date.now() - 7 * 86_400_000))
+      throw new ConflictException(
+        'Refund retry window expired; reconcile this request with Midtrans before retrying',
+      );
     await this.midtrans.request(order.orderNumber, 'refund', {
       refund_key: request.id,
       amount: order.total.toNumber(),
@@ -377,6 +421,99 @@ export class PaymentsService {
     if (confirmed?.transaction_status === 'refund')
       return this.applyStatus(confirmed);
     return { message: 'Refund submitted; awaiting provider confirmation' };
+  }
+
+  private snapItems(
+    order: Prisma.OrderGetPayload<{ include: { items: true } }>,
+  ) {
+    const wholeRupiah = (value: Prisma.Decimal): number => {
+      if (
+        !value.isInteger() ||
+        value.isNegative() ||
+        !Number.isSafeInteger(value.toNumber())
+      )
+        throw new ConflictException(
+          'Nominal pembayaran harus berupa Rupiah bulat yang valid',
+        );
+      return value.toNumber();
+    };
+    if (!order.total.isPositive())
+      throw new ConflictException(
+        'Total pembayaran harus lebih besar dari nol',
+      );
+    wholeRupiah(order.total);
+    const items = order.items.map((item) => {
+      if (!Number.isSafeInteger(item.quantity) || item.quantity < 1)
+        throw new ConflictException('Kuantitas pesanan tidak valid');
+      return {
+        id: item.id,
+        price: wholeRupiah(item.unitPrice),
+        quantity: item.quantity,
+        name:
+          item.productName.replaceAll('|', ' ').trim().slice(0, 50) || 'Produk',
+      };
+    });
+    if (order.shippingCost.isPositive())
+      items.push({
+        id: 'ADA-SHIPPING',
+        price: wholeRupiah(order.shippingCost),
+        quantity: 1,
+        name: 'Biaya pengiriman',
+      });
+    wholeRupiah(order.shippingCost);
+    wholeRupiah(order.discountAmount);
+    if (order.discountAmount.isPositive())
+      items.push({
+        id: 'ADA-DISCOUNT',
+        price: -order.discountAmount.toNumber(),
+        quantity: 1,
+        name: 'Potongan voucher',
+      });
+    const sum = items.reduce(
+      (total, item) =>
+        total.plus(new Prisma.Decimal(item.price).mul(item.quantity)),
+      new Prisma.Decimal(0),
+    );
+    if (!sum.equals(order.total))
+      throw new ConflictException(
+        'Rincian nominal pesanan tidak sesuai total pembayaran',
+      );
+    return items;
+  }
+
+  private validateSnap(value: unknown): SnapResponse {
+    if (
+      !value ||
+      typeof value !== 'object' ||
+      !('token' in value) ||
+      typeof value.token !== 'string' ||
+      !value.token.trim() ||
+      value.token.length > 2048 ||
+      !('redirect_url' in value) ||
+      typeof value.redirect_url !== 'string'
+    )
+      throw new BadGatewayException(
+        'Midtrans returned an invalid payment session',
+      );
+    let url: URL;
+    try {
+      url = new URL(value.redirect_url);
+    } catch {
+      throw new BadGatewayException('Midtrans returned an invalid payment URL');
+    }
+    const host = this.config.get<boolean>('MIDTRANS_IS_PRODUCTION')
+      ? 'app.midtrans.com'
+      : 'app.sandbox.midtrans.com';
+    if (
+      url.protocol !== 'https:' ||
+      url.hostname !== host ||
+      url.port ||
+      url.username ||
+      url.password ||
+      !url.pathname.startsWith('/snap/')
+    )
+      throw new BadGatewayException('Midtrans returned an invalid payment URL');
+    return { token: value.token, redirect_url: url.toString() };
   }
 
   private verifySignature(dto: MidtransNotificationDto): void {

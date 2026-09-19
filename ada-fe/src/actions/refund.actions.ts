@@ -1,9 +1,9 @@
 'use server';
-import { cookies } from 'next/headers';
+import { getActionAccessToken } from '@/lib/session-server';
 import { revalidatePath } from 'next/cache';
 export interface RefundState { error?: string; success?: string }
 export async function refundAction(orderId: string, _state: RefundState, form: FormData): Promise<RefundState> {
-  const token = (await cookies()).get('access_token')?.value;
+  const token = await getActionAccessToken();
   if (!token) return { error: 'Silakan login kembali.' };
   if (form.get('confirm') !== 'on') return { error: 'Konfirmasi refund diperlukan.' };
   try {

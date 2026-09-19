@@ -1,5 +1,5 @@
 'use server';
-import { cookies } from 'next/headers';
+import { getActionAccessToken } from '@/lib/session-server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { apiRequest } from '@/lib/api';
@@ -9,7 +9,7 @@ export interface ProcurementState { error?: string; success?: string }
 export interface ProcurementOption { id: string; label: string }
 const text = (form: FormData, name: string) => String(form.get(name) ?? '').trim();
 async function mutate(path: string, method: string, body?: unknown): Promise<unknown> {
-  const token = (await cookies()).get('access_token')?.value;
+  const token = await getActionAccessToken();
   if (!token) throw new Error('Silakan login kembali.');
   const response = await fetch(`${process.env.API_URL ?? 'http://localhost:3000/api/v1'}/procurement${path}`, { method, cache: 'no-store', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(25000) });
   const payload: unknown = await response.json();
@@ -47,12 +47,12 @@ export async function purchaseOrderAction(id: string | null, _state: Procurement
 export async function purchaseTransitionAction(id: string, action: 'issue' | 'receive' | 'cancel', _state: ProcurementState, form: FormData): Promise<ProcurementState> {
   if (!['issue', 'receive', 'cancel'].includes(action)) return { error: 'Aksi tidak valid.' };
   if (form.get('confirm') !== 'on') return { error: 'Konfirmasi tindakan diperlukan.' };
-  try { await mutate(`/orders/${encodeURIComponent(id)}/${action}`, 'POST'); } catch (error: unknown) { return failure(error); }
+  try { await mutate(`/orders/${encodeURIComponent(id)}/${action}`, 'POST', action === 'receive' ? { warehouseId: text(form, 'warehouseId') } : undefined); } catch (error: unknown) { return failure(error); }
   revalidatePath('/admin/procurement', 'layout'); revalidatePath('/admin/inventory', 'layout');
   return { success: 'Status purchase order diperbarui.' };
 }
 export async function searchProcurementOptions(kind: 'suppliers' | 'products', search: string): Promise<{ options: ProcurementOption[]; error?: string }> {
-  const token = (await cookies()).get('access_token')?.value;
+  const token = await getActionAccessToken();
   if (!token) return { options: [], error: 'Silakan login kembali.' };
   const query = new URLSearchParams({ limit: '50', search: search.trim().slice(0, 100) });
   try {

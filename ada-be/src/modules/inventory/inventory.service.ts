@@ -7,6 +7,7 @@ import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { AdjustStockDto } from './dto/adjust-stock.dto';
 import { QueryInventoryDto } from './dto/query-inventory.dto';
+import { adjustWarehouseStock } from '../warehouses/warehouse-stock';
 
 interface LockedInventory {
   id: string;
@@ -124,10 +125,17 @@ export class InventoryService {
               where: { id: current.id },
               data: { quantity: quantityAfter },
             });
+            const warehouseStock = await adjustWarehouseStock(
+              tx,
+              productId,
+              dto.quantityDelta,
+              dto.warehouseId,
+            );
             const movement = await tx.stockMovement.create({
               data: {
                 productId,
                 actorId,
+                warehouseId: warehouseStock.warehouseId,
                 quantityBefore: current.quantity,
                 quantityDelta: dto.quantityDelta,
                 quantityAfter,

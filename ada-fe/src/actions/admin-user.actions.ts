@@ -1,13 +1,13 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { getActionAccessToken } from '@/lib/session-server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
 const API_URL = process.env.API_URL ?? 'http://localhost:3000/api/v1';
 
 export async function updateUserAccessAction(userId: string, formData: FormData): Promise<void> {
-  const token = (await cookies()).get('access_token')?.value;
+  const token = await getActionAccessToken();
   if (!token) redirect('/login?returnTo=%2Fadmin%2Fusers');
   const response = await fetch(`${API_URL}/users/admin/${userId}/access`, {
     method: 'PATCH',

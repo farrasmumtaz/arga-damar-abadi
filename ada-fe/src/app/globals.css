@@ -258,6 +258,16 @@ button { color: inherit; }
 .product-image-controls { display: flex; flex-wrap: wrap; gap: 8px; }
 .product-image-controls button { min-height: 36px; padding: 6px 8px; font: inherit; font-size: 11px; background: white; border: 1px solid var(--line); border-radius: 5px; cursor: pointer; }
 .product-image-controls button:disabled { opacity: .5; cursor: wait; }
+.catalog-page h1 { margin: 0; font: 750 clamp(28px,5vw,42px) var(--font-display); }
+.catalog-filters { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,190px),1fr)); gap: 16px; padding: 24px; background: white; border: 1px solid var(--line); border-radius: 12px; }
+.catalog-filters label { display: grid; gap: 8px; font-size: 13px; font-weight: 600; }
+.catalog-filters input,.catalog-filters select { width: 100%; min-height: 44px; padding: 10px; font: inherit; border: 1px solid var(--line); border-radius: 6px; background: white; }
+.catalog-filter-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 18px; grid-column: 1 / -1; }
+.catalog-result-count { margin-block: 26px; color: var(--ink-soft); }
+.catalog-pagination { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: center; margin-top: 36px; }
+.catalog-pagination a { padding: 12px 16px; border: 1px solid var(--line); border-radius: 6px; background: white; }
+.brand-row a { font: inherit; color: inherit; }
+.purchase-button:disabled { cursor: not-allowed; opacity: .5; }
 .user-admin-table > form { min-height: 78px; padding: 16px 20px; display: grid; grid-template-columns: minmax(260px, 1fr) auto auto auto auto; gap: 18px; align-items: center; border-bottom: 1px solid var(--line); }
 .user-admin-table > form:last-child { border-bottom: 0; }.user-admin-table form > span:first-child { display: grid; gap: 4px; }.user-admin-table small,.user-admin-table form > span { color: var(--ink-soft); }.user-admin-table strong { color: var(--ink); }.user-admin-table select,.user-admin-table button { padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: #fff; }
 :focus-visible { outline: 3px solid #c9a227; outline-offset: 3px; }

@@ -1,6 +1,8 @@
 import { Transform } from 'class-transformer';
 import {
   IsInt,
+  IsOptional,
+  IsUUID,
   IsString,
   Max,
   MaxLength,
@@ -10,6 +12,9 @@ import {
 } from 'class-validator';
 
 export class AdjustStockDto {
+  @IsOptional()
+  @IsUUID()
+  warehouseId?: string;
   @IsInt()
   @Min(-1_000_000)
   @Max(1_000_000)

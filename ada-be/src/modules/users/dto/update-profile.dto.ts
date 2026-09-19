@@ -1,5 +1,6 @@
 import { Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsOptional,
   IsPhoneNumber,
   IsString,
@@ -8,6 +9,10 @@ import {
 } from 'class-validator';
 
 export class UpdateProfileDto {
+  @IsOptional()
+  @IsBoolean()
+  whatsappOptIn?: boolean;
+
   @IsOptional()
   @IsString()
   @MinLength(2)

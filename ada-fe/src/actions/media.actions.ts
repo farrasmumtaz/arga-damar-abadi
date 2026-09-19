@@ -1,12 +1,12 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { getActionAccessToken } from '@/lib/session-server';
 import { redirect } from 'next/navigation';
 
 export interface UploadResult { id?: string; url?: string; error?: string }
 export async function uploadMediaAction(purpose: 'images' | 'boq', data: FormData): Promise<UploadResult> {
   if (!['images', 'boq'].includes(purpose)) return { error: 'Jenis file tidak valid' };
-  const token = (await cookies()).get('access_token')?.value;
+  const token = await getActionAccessToken();
   if (!token) return { error: 'Login terlebih dahulu untuk upload.' };
   const file = data.get('file');
   if (!(file instanceof File) || !file.size || file.size > 5 * 1024 * 1024) return { error: 'File wajib diisi, maksimum 5 MB.' };
@@ -26,7 +26,7 @@ export async function uploadMediaAction(purpose: 'images' | 'boq', data: FormDat
 }
 
 export async function downloadMediaAction(id: string): Promise<void> {
-  const token = (await cookies()).get('access_token')?.value;
+  const token = await getActionAccessToken();
   if (!token) redirect('/login');
   const response = await fetch(`${process.env.API_URL ?? 'http://localhost:3000/api/v1'}/media/${encodeURIComponent(id)}/download`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
   if (!response.ok) throw new Error('File tidak tersedia atau akses ditolak');

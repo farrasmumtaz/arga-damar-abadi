@@ -17,6 +17,28 @@ export const envValidationSchema = Joi.object({
   FRONTEND_URL: Joi.string().uri().default('http://localhost:3001'),
   SHIPPING_BASE_COST: Joi.number().integer().min(0).default(20000),
   SHIPPING_PER_KG_COST: Joi.number().integer().min(0).default(5000),
+  SHIPPING_PROVIDER: Joi.string()
+    .valid('INTERNAL', 'BITESHIP')
+    .default('INTERNAL'),
+  SHIPPING_ORIGIN_POSTAL_CODE: Joi.string()
+    .pattern(/^\d{5}$/)
+    .optional(),
+  BITESHIP_API_KEY: Joi.string().optional(),
+  BITESHIP_COURIERS: Joi.string()
+    .pattern(/^[a-z0-9_,]+$/)
+    .default('jne'),
+  WHATSAPP_ENABLED: Joi.boolean().default(false),
+  WHATSAPP_ACCESS_TOKEN: Joi.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: Joi.string().pattern(/^\d+$/).optional(),
+  WHATSAPP_GRAPH_VERSION: Joi.string()
+    .pattern(/^v\d+\.\d+$/)
+    .optional(),
+  WHATSAPP_TEMPLATE_NAME: Joi.string()
+    .pattern(/^[a-z0-9_]+$/)
+    .optional(),
+  WHATSAPP_TEMPLATE_LANGUAGE: Joi.string()
+    .pattern(/^[a-z]{2}(_[A-Z]{2})?$/)
+    .default('id'),
   SMTP_HOST: Joi.string().optional(),
   SUPABASE_URL: Joi.string()
     .uri({ scheme: ['https', 'http'] })

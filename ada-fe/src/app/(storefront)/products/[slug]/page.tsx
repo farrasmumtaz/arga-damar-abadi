@@ -22,7 +22,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   return (
     <section className="container product-detail section">
-      <Link href="/#products" className="back-link"><ArrowLeft size={16} /> Kembali ke produk</Link>
+      <Link href="/products" className="back-link"><ArrowLeft size={16} /> Kembali ke produk</Link>
       <div className="detail-grid">
         <ProductGallery product={product} />
         <div className="detail-copy">
@@ -32,9 +32,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
           <p className="detail-description">{product.description}</p>
           <div className="detail-price"><strong>{formatPrice(product.price)}</strong><span>per {product.unit} · termasuk PPN</span></div>
           <form action={addToCartAction.bind(null, product.id)}>
-            <button className="button button-primary purchase-button">Tambah ke keranjang</button>
+            <button className="button button-primary purchase-button" disabled={product.stock <= 0}>{product.stock > 0 ? 'Tambah ke keranjang' : 'Stok habis'}</button>
           </form>
-          <Link href={`/checkout?product=${product.slug}`} className="direct-checkout">Beli langsung</Link>
+          {product.stock > 0 && <Link href={`/checkout?product=${product.slug}`} className="direct-checkout">Beli langsung</Link>}
           <div className="detail-assurance"><span><ShieldCheck /> Produk original & bergaransi</span><span><Truck /> Estimasi pengiriman saat checkout</span></div>
         </div>
       </div>

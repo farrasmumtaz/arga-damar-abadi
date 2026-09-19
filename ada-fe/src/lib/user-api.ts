@@ -13,7 +13,7 @@ export interface Address {
   postalCode: string;
   isDefault: boolean;
 }
-export interface UserProfile { id: string; email: string; fullName: string; phone: string | null; role: string; emailVerified: string | null }
+export interface UserProfile { id: string; email: string; fullName: string; phone: string | null; role: string; emailVerified: string | null; whatsappOptInAt: string | null }
 export async function getProfile(): Promise<UserProfile | null> {
   const token = (await cookies()).get('access_token')?.value;
   if (!token) return null;

@@ -13,6 +13,10 @@ import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { ShippingCostService } from './shipping-cost.service';
 import { queueNotification } from '../notifications/queue-notification';
 import { PromotionsService } from '../promotions/promotions.service';
+import {
+  reserveWarehouseStock,
+  transitionWarehouseAllocations,
+} from '../warehouses/warehouse-stock';
 
 interface LockedStock {
   quantity: number;
@@ -175,6 +179,14 @@ export class OrdersService {
                 order.id,
                 userId,
               );
+            for (const item of checkoutItems) {
+              await reserveWarehouseStock(
+                tx,
+                order.id,
+                item.productId,
+                item.quantity,
+              );
+            }
             if (cart)
               await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
             await queueNotification(
@@ -262,6 +274,10 @@ export class OrdersService {
         statusHistories: {
           orderBy: { createdAt: 'desc' },
           include: { actor: { select: { fullName: true, email: true } } },
+        },
+        allocations: {
+          include: { warehouse: { select: { code: true, name: true } } },
+          orderBy: [{ productId: 'asc' }, { warehouseId: 'asc' }],
         },
       },
     });
@@ -353,12 +369,16 @@ export class OrdersService {
             'Pembayaran sudah diterbitkan. Tunggu pembatalan atau kedaluwarsa dikonfirmasi provider sebelum stok dilepas.',
           );
         }
-        for (const item of order.items) {
+        for (const item of [...order.items].sort((a, b) =>
+          a.productId.localeCompare(b.productId),
+        )) {
+          await tx.$queryRaw`SELECT "id" FROM "inventories" WHERE "product_id" = ${item.productId}::uuid FOR UPDATE`;
           await tx.inventory.update({
             where: { productId: item.productId },
             data: { reserved: { decrement: item.quantity } },
           });
         }
+        await transitionWarehouseAllocations(tx, order.id, 'release');
         await tx.orderStatusHistory.create({
           data: {
             orderId: order.id,

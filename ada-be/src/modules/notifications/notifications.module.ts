@@ -8,6 +8,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { MailService } from '../../infrastructure/mail/mail.service';
+import { WhatsappService } from './whatsapp.service';
+import { NotificationsController } from './notifications.controller';
 
 @Injectable()
 export class NotificationWorker implements OnModuleInit, OnModuleDestroy {
@@ -18,6 +20,7 @@ export class NotificationWorker implements OnModuleInit, OnModuleDestroy {
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly config: ConfigService,
+    private readonly whatsapp: WhatsappService,
   ) {}
   onModuleInit(): void {
     if (this.config.get<boolean>('NOTIFICATIONS_ENABLED', false)) {
@@ -40,13 +43,41 @@ export class NotificationWorker implements OnModuleInit, OnModuleDestroy {
           async (tx) => {
             const rows = await tx.$queryRaw<
               Array<{ id: string }>
-            >`SELECT "id" FROM "notifications" WHERE "status" = 'QUEUED' AND "next_attempt_at" <= NOW() ORDER BY "next_attempt_at" LIMIT 1 FOR UPDATE SKIP LOCKED`;
+            >`SELECT "id" FROM "notifications" WHERE "status" = 'QUEUED' AND "next_attempt_at" <= NOW() AND ("channel" = 'EMAIL' OR ${this.config.get<boolean>('WHATSAPP_ENABLED', false)}) ORDER BY "next_attempt_at" LIMIT 1 FOR UPDATE SKIP LOCKED`;
             if (!rows[0]) return false;
             const item = await tx.notification.findUniqueOrThrow({
               where: { id: rows[0].id },
             });
             try {
-              await this.mail.send(item.recipient, item.subject, item.body);
+              if (item.channel === 'WHATSAPP') {
+                const recipient = item.userId
+                  ? await tx.user.findUnique({
+                      where: { id: item.userId },
+                      select: {
+                        isActive: true,
+                        phone: true,
+                        whatsappOptInAt: true,
+                      },
+                    })
+                  : null;
+                if (
+                  !recipient?.isActive ||
+                  !recipient.whatsappOptInAt ||
+                  recipient.phone !== item.recipient
+                ) {
+                  await tx.notification.update({
+                    where: { id: item.id },
+                    data: { status: 'CANCELLED' },
+                  });
+                  return true;
+                }
+                await this.whatsapp.send(
+                  item.recipient,
+                  item.subject,
+                  item.body,
+                );
+              } else
+                await this.mail.send(item.recipient, item.subject, item.body);
               await tx.notification.update({
                 where: { id: item.id },
                 data: {
@@ -84,5 +115,8 @@ export class NotificationWorker implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-@Module({ providers: [NotificationWorker, MailService] })
+@Module({
+  controllers: [NotificationsController],
+  providers: [NotificationWorker, MailService, WhatsappService],
+})
 export class NotificationsModule {}

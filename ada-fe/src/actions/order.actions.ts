@@ -1,11 +1,11 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { getActionAccessToken } from '@/lib/session-server';
 import { redirect } from 'next/navigation';
 
 const API_URL = process.env.API_URL ?? 'http://localhost:3000/api/v1';
 async function authFetch(path: string, method: string): Promise<Response> {
-  const token = (await cookies()).get('access_token')?.value;
+  const token = await getActionAccessToken();
   if (!token) redirect('/login?returnTo=%2Faccount%2Forders');
   return fetch(`${API_URL}${path}`, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, cache: 'no-store' });
 }

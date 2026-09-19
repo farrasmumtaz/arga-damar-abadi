@@ -71,6 +71,8 @@ model Supplier {
 }
 
 model PurchaseOrder {
+  warehouseId String? @map("warehouse_id") @db.Uuid
+  warehouse Warehouse? @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
   id String @id @default(uuid()) @db.Uuid
   purchaseNumber String @unique @map("purchase_number") @db.VarChar(40)
   supplierId String @map("supplier_id") @db.Uuid
@@ -149,6 +151,7 @@ enum PaymentStatus {
 }
 
 enum StockMovementType {
+  WAREHOUSE_TRANSFER
   ADJUSTMENT
   REFUND_RESTOCK
   PURCHASE_RECEIPT
@@ -164,6 +167,8 @@ enum QuotationStatus {
 }
 
 model User {
+  warehouseTransfers WarehouseTransfer[]
+  whatsappOptInAt DateTime? @map("whatsapp_opt_in_at")
   promotionRedemptions PromotionRedemption[]
   id            String         @id @default(uuid()) @db.Uuid
   email         String         @unique @db.VarChar(255)
@@ -255,6 +260,9 @@ model Brand {
 }
 
 model Product {
+  warehouseTransfers WarehouseTransfer[]
+  warehouseStocks WarehouseStock[]
+  warehouseAllocations OrderAllocation[]
   purchaseOrderItems PurchaseOrderItem[]
   id               String          @id @default(uuid()) @db.Uuid
   categoryId       String          @map("category_id") @db.Uuid
@@ -313,6 +321,8 @@ model Inventory {
 }
 
 model StockMovement {
+  warehouseId String? @map("warehouse_id") @db.Uuid
+  warehouse Warehouse? @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
   id             String            @id @default(uuid()) @db.Uuid
   productId      String            @map("product_id") @db.Uuid
   actorId        String            @map("actor_id") @db.Uuid
@@ -377,6 +387,7 @@ model Address {
 }
 
 model Order {
+  allocations OrderAllocation[]
   promotionCode String? @map("promotion_code") @db.VarChar(40)
   redemption PromotionRedemption?
   quotationId String? @unique @map("quotation_id") @db.Uuid
@@ -393,6 +404,7 @@ model Order {
   customerNote    String?     @map("customer_note") @db.VarChar(500)
   shippingProvider String?    @map("shipping_provider") @db.VarChar(80)
   trackingNumber   String?    @map("tracking_number") @db.VarChar(120)
+  shippingTrackingId String? @map("shipping_tracking_id") @db.VarChar(120)
   shippedAt         DateTime? @map("shipped_at")
   deliveredAt       DateTime? @map("delivered_at")
   cancelledAt       DateTime? @map("cancelled_at")
@@ -546,6 +558,8 @@ model AuditLog {
 }
 
 model Notification {
+  channel String @default("EMAIL") @db.VarChar(10)
+  userId String? @map("user_id") @db.Uuid
   id String @id @default(uuid()) @db.Uuid
   eventKey String @unique @map("event_key") @db.VarChar(200)
   recipient String @db.VarChar(255)
@@ -557,5 +571,74 @@ model Notification {
   sentAt DateTime? @map("sent_at")
   createdAt DateTime @default(now()) @map("created_at")
   @@index([status, nextAttemptAt])
+  @@index([userId, createdAt])
   @@map("notifications")
+}
+
+enum AllocationState {
+  RESERVED
+  CONSUMED
+  RELEASED
+  RETURNED
+}
+
+model Warehouse {
+  outboundTransfers WarehouseTransfer[] @relation("TransferSource")
+  inboundTransfers WarehouseTransfer[] @relation("TransferDestination")
+  id String @id @default(uuid()) @db.Uuid
+  code String @unique @db.VarChar(40)
+  name String @db.VarChar(150)
+  isActive Boolean @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  stocks WarehouseStock[]
+  allocations OrderAllocation[]
+  purchaseOrders PurchaseOrder[]
+  stockMovements StockMovement[]
+  @@map("warehouses")
+}
+
+model WarehouseStock {
+  id String @id @default(uuid()) @db.Uuid
+  warehouseId String @map("warehouse_id") @db.Uuid
+  productId String @map("product_id") @db.Uuid
+  quantity Int @default(0)
+  reserved Int @default(0)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  @@unique([warehouseId, productId])
+  @@index([productId])
+  @@map("warehouse_stocks")
+}
+
+model OrderAllocation {
+  id String @id @default(uuid()) @db.Uuid
+  orderId String @map("order_id") @db.Uuid
+  productId String @map("product_id") @db.Uuid
+  warehouseId String @map("warehouse_id") @db.Uuid
+  quantity Int
+  state AllocationState @default(RESERVED)
+  order Order @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  @@unique([orderId, productId, warehouseId])
+  @@index([productId, state])
+  @@index([warehouseId, state])
+  @@map("order_allocations")
+}
+
+model WarehouseTransfer {
+  id String @id @db.Uuid
+  productId String @map("product_id") @db.Uuid
+  fromWarehouseId String @map("from_warehouse_id") @db.Uuid
+  toWarehouseId String @map("to_warehouse_id") @db.Uuid
+  actorId String @map("actor_id") @db.Uuid
+  quantity Int
+  reason String @db.VarChar(300)
+  createdAt DateTime @default(now()) @map("created_at")
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  fromWarehouse Warehouse @relation("TransferSource", fields: [fromWarehouseId], references: [id], onDelete: Restrict)
+  toWarehouse Warehouse @relation("TransferDestination", fields: [toWarehouseId], references: [id], onDelete: Restrict)
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  @@index([productId, createdAt])
+  @@map("warehouse_transfers")
 }

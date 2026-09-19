@@ -18,6 +18,7 @@ const profileSelect = {
   fullName: true,
   role: true,
   emailVerified: true,
+  whatsappOptInAt: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.UserSelect;
@@ -94,6 +95,11 @@ export class UsersService {
         data: {
           ...(dto.fullName !== undefined ? { fullName: dto.fullName } : {}),
           ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+          ...(dto.whatsappOptIn !== undefined
+            ? { whatsappOptInAt: dto.whatsappOptIn ? new Date() : null }
+            : dto.phone !== undefined
+              ? { whatsappOptInAt: null }
+              : {}),
         },
         select: profileSelect,
       });

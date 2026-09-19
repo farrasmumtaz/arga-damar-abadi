@@ -1,0 +1,11 @@
+# Development only: Mailpit is not an authenticated production mail relay.
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ['127.0.0.1:1025:1025', '127.0.0.1:8025:8025']
+  clamav:
+    image: clamav/clamav:stable
+    ports: ['127.0.0.1:3310:3310']
+    volumes: ['clamav_signatures:/var/lib/clamav']
+volumes:
+  clamav_signatures:

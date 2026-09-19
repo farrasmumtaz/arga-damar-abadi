@@ -16,8 +16,10 @@ import {
   PurchaseOrderDto,
   SupplierDto,
 } from './dto/procurement.dto';
+import { adjustWarehouseStock } from '../warehouses/warehouse-stock';
 
 const orderInclude = {
+  warehouse: { select: { id: true, code: true, name: true } },
   supplier: true,
   items: { orderBy: { sku: 'asc' as const } },
 } satisfies Prisma.PurchaseOrderInclude;
@@ -258,6 +260,7 @@ export class ProcurementService {
     actorId: string,
     id: string,
     action: 'issue' | 'receive' | 'cancel',
+    warehouseId?: string,
   ) {
     return this.prisma.$transaction(
       async (tx) => {
@@ -274,7 +277,17 @@ export class ProcurementService {
           cancel: PurchaseOrderStatus.CANCELLED,
         }[action];
         // The PO row serializes receipt retries: only the first request writes stock.
-        if (current.status === target) return current;
+        if (current.status === target) {
+          if (
+            action === 'receive' &&
+            warehouseId &&
+            warehouseId !== current.warehouseId
+          )
+            throw new ConflictException(
+              'PO sudah diterima di gudang yang berbeda.',
+            );
+          return current;
+        }
         const allowed =
           action === 'issue'
             ? current.status === PurchaseOrderStatus.DRAFT
@@ -291,6 +304,7 @@ export class ProcurementService {
           throw new ConflictException(
             'Supplier harus aktif sebelum PO diterbitkan.',
           );
+        let receivedWarehouseId: string | undefined;
         if (action === 'receive') {
           if (!current.items.length)
             throw new ConflictException(
@@ -318,10 +332,18 @@ export class ProcurementService {
               where: { id: inventory.id },
               data: { quantity: quantityAfter },
             });
+            const warehouseStock = await adjustWarehouseStock(
+              tx,
+              item.productId,
+              item.quantity,
+              warehouseId,
+            );
+            receivedWarehouseId = warehouseStock.warehouseId;
             await tx.stockMovement.create({
               data: {
                 productId: item.productId,
                 actorId,
+                warehouseId: warehouseStock.warehouseId,
                 type: StockMovementType.PURCHASE_RECEIPT,
                 quantityBefore: inventory.quantity,
                 quantityDelta: item.quantity,
@@ -339,7 +361,7 @@ export class ProcurementService {
             ...(action === 'issue'
               ? { issuedAt: now }
               : action === 'receive'
-                ? { receivedAt: now }
+                ? { receivedAt: now, warehouseId: receivedWarehouseId }
                 : { cancelledAt: now }),
           },
           include: orderInclude,

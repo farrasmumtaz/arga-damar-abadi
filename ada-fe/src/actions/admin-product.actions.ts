@@ -1,6 +1,6 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { getActionAccessToken } from '@/lib/session-server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -32,7 +32,7 @@ function payload(formData: FormData) {
   };
 }
 async function mutate(path: string, method: string, body?: unknown): Promise<string | null> {
-  const token = (await cookies()).get('access_token')?.value;
+  const token = await getActionAccessToken();
   if (!token) redirect('/login?returnTo=%2Fadmin%2Fproducts');
   const response = await fetch(`${API_URL}${path}`, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined, cache: 'no-store' });
   if (response.ok) return null;

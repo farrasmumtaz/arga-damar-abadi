@@ -48,6 +48,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
             <span>Nomor telepon</span>
             <input name="phone" defaultValue={user.phone ?? ''} placeholder="+628123456789" />
           </label>
+          <label className="check-field"><input name="whatsappOptIn" type="checkbox" defaultChecked={Boolean(user.whatsappOptInAt)}/><span>Saya setuju menerima update transaksi dan penawaran proyek lewat WhatsApp di nomor ini. Dapat dinonaktifkan kapan saja.</span></label>
           <button className="button button-primary">Simpan profil</button>
         </form>
 

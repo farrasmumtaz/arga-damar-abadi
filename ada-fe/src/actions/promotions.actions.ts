@@ -1,6 +1,6 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { getActionAccessToken } from '@/lib/session-server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
@@ -9,7 +9,7 @@ export interface PromotionFormState { error?: string; success?: string }
 export interface VoucherState { error?: string; code?: string; subtotal?: string; discountAmount?: string; discountedSubtotal?: string; note?: string }
 
 async function authenticatedRequest(path: string, method: string, body?: Record<string, unknown>): Promise<unknown> {
-  const token = (await cookies()).get('access_token')?.value;
+  const token = await getActionAccessToken();
   if (!token) throw new Error('Silakan login kembali.');
   const response = await fetch(`${API_URL}${path}`, { method, cache: 'no-store', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
   const result: unknown = response.status === 204 ? null : await response.json().catch(() => null);

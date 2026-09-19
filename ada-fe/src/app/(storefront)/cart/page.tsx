@@ -13,13 +13,15 @@ import { formatPrice } from '@/lib/catalog';
 
 export const metadata: Metadata = { title: 'Keranjang' };
 
-export default async function CartPage() {
+export default async function CartPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await getSession();
   if (!user) redirect('/login?returnTo=%2Fcart');
   const cart = await getCart();
+  const error = (await searchParams).error;
 
   return (
     <section className="container cart-page section">
+      {error && <p className="form-error" role="alert">Keranjang tidak dapat diperbarui. Periksa stok dan jumlah produk, lalu coba kembali.</p>}
       <div className="checkout-heading">
         <p className="eyebrow"><span /> Keranjang belanja</p>
         <h1>Produk pilihan Anda</h1>
@@ -30,7 +32,7 @@ export default async function CartPage() {
           <ShoppingBag size={40} />
           <h2>Keranjang masih kosong</h2>
           <p>Jelajahi katalog dan tambahkan produk yang Anda butuhkan.</p>
-          <Link className="button button-primary" href="/#products">Lihat produk</Link>
+          <Link className="button button-primary" href="/products">Lihat produk</Link>
         </div>
       ) : (
         <div className="cart-grid">
@@ -62,7 +64,7 @@ export default async function CartPage() {
             <hr />
             <p className="total"><span>Total sementara</span><strong>{formatPrice(cart.subtotal)}</strong></p>
             <Link className="button button-primary" href="/checkout">Lanjut checkout <ArrowRight size={17} /></Link>
-            <Link className="continue-shopping" href="/#products">Lanjut belanja</Link>
+            <Link className="continue-shopping" href="/products">Lanjut belanja</Link>
           </aside>
         </div>
       )}

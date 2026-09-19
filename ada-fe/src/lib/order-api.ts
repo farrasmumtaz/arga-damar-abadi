@@ -4,7 +4,7 @@ import { apiRequest } from './api';
 export interface OrderItem { id: string; productName: string; sku: string; unitPrice: string; quantity: number; subtotal: string }
 export interface Payment { id: string; status: string; method: string | null; paidAt: string | null }
 export interface Order {
-  id: string; orderNumber: string; status: string; subtotal: string; shippingCost: string;
+  id: string; orderNumber: string; status: string; subtotal: string; shippingCost: string; discountAmount: string;
   total: string; shippingAddress: Record<string, unknown>; customerNote: string | null;
   shippingProvider: string | null; trackingNumber: string | null;
   createdAt: string; items: OrderItem[]; payments?: Payment[];

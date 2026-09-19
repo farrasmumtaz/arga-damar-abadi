@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { getActionAccessToken } from '@/lib/session-server';
 
 export interface SecurityState { error?: string; success?: string }
 export type SecurityOperation = 'forgot-password' | 'reset-password' | 'verify-email' | 'change-password' | 'verification/request';
@@ -16,8 +17,8 @@ export async function accountSecurityAction(operation: SecurityOperation, _state
     : operation === 'verify-email' ? { token: data.get('token') }
     : operation === 'change-password' ? { currentPassword: data.get('currentPassword'), password } : {};
   const jar = await cookies();
-  const accessToken = jar.get('access_token')?.value;
   try {
+    const accessToken = operation === 'change-password' || operation === 'verification/request' ? await getActionAccessToken() : undefined;
     const response = await fetch(`${process.env.API_URL ?? 'http://localhost:3000/api/v1'}/auth/${operation}`, {
       method: 'POST', cache: 'no-store',
       headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },

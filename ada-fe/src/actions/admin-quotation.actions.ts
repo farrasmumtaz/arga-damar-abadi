@@ -1,11 +1,11 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { getActionAccessToken } from '@/lib/session-server';
 import { revalidatePath } from 'next/cache';
 export interface QuotationActionState { error?: string; success?: string }
 const API_URL = process.env.API_URL ?? 'http://localhost:3000/api/v1';
 export async function updateQuotationAction(id: string, _state: QuotationActionState, formData: FormData): Promise<QuotationActionState> {
-  const token = (await cookies()).get('access_token')?.value; if (!token) return { error: 'Sesi admin berakhir' };
+  const token = await getActionAccessToken(); if (!token) return { error: 'Sesi admin berakhir' };
   const itemIds = formData.getAll('itemId').map(String);
   const prices = formData.getAll('unitPrice').map(Number);
   const status = String(formData.get('status'));

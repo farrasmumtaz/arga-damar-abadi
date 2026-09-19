@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { MidtransClient } from './midtrans.client';
 import { PaymentsService } from './payments.service';
+import { transitionWarehouseAllocations } from '../warehouses/warehouse-stock';
 
 @Injectable()
 export class MaintenanceService implements OnModuleInit, OnModuleDestroy {
@@ -56,6 +57,28 @@ export class MaintenanceService implements OnModuleInit, OnModuleDestroy {
           });
         }
       }
+      // Refund approval can complete without another webhook; do not issue a second refund here.
+      const refunds = await this.prisma.refundRequest.findMany({
+        where: { completedAt: null },
+        select: { order: { select: { orderNumber: true } } },
+        take: 100,
+        orderBy: { createdAt: 'asc' },
+      });
+      for (const refund of refunds) {
+        try {
+          const status = await this.midtrans.request(
+            refund.order.orderNumber,
+            'status',
+          );
+          if (status?.transaction_status === 'refund')
+            await this.payments.applyStatus(status);
+        } catch {
+          this.logger.error({
+            event: 'refund_reconciliation_failed',
+            orderNumber: refund.order.orderNumber,
+          });
+        }
+      }
       await this.prisma.quotation.updateMany({
         where: { status: 'QUOTED', validUntil: { lte: new Date() } },
         data: { status: 'EXPIRED' },
@@ -71,13 +94,47 @@ export class MaintenanceService implements OnModuleInit, OnModuleDestroy {
   }
 
   async expire(id: string, orderNumber: string, before: Date): Promise<void> {
+    const existingPayment = await this.prisma.payment.findUnique({
+      where: { externalId: orderNumber },
+    });
+    const payload = existingPayment?.providerPayload;
+    const snapToken =
+      payload &&
+      typeof payload === 'object' &&
+      !Array.isArray(payload) &&
+      typeof payload.token === 'string'
+        ? payload.token
+        : null;
     // Query provider even without a local payment row: a Snap request may have timed out after creation.
     let status = await this.midtrans.request(orderNumber, 'status');
     if (status?.transaction_status === 'pending') {
-      await this.midtrans.request(orderNumber, 'expire');
+      // An expiry request can race a settlement or time out after provider success.
+      // Always fetch authoritative status before deciding whether reservations can be released.
+      try {
+        await this.midtrans.request(orderNumber, 'expire');
+      } catch {
+        /* status below resolves uncertainty; no local release on failure */
+      }
       status = await this.midtrans.request(orderNumber, 'status');
     }
     if (status) {
+      if (
+        snapToken &&
+        (status.transaction_status === 'expire' ||
+          status.transaction_status === 'cancel' ||
+          status.transaction_status === 'deny')
+      ) {
+        await this.midtrans.cancelSnap(snapToken);
+        const latest = await this.midtrans.request(orderNumber, 'status');
+        if (!latest)
+          throw new Error(
+            'Provider status disappeared after session cancellation',
+          );
+        status = latest;
+        // A closed Snap session with a denied final attempt cannot be paid again.
+        if (status.transaction_status === 'deny')
+          status = { ...status, transaction_status: 'cancel' };
+      }
       // Only statuses confirmed by provider can release stock for an external transaction.
       const order = await this.prisma.order.findUniqueOrThrow({
         where: { id },
@@ -105,10 +162,15 @@ export class MaintenanceService implements OnModuleInit, OnModuleDestroy {
         if (
           order.status !== 'PENDING_PAYMENT' ||
           order.createdAt > before ||
-          order.payments.length
+          order.payments.some(
+            (payment) =>
+              payment.status !== 'PENDING' || payment.provider !== 'MIDTRANS',
+          )
         )
           return;
         // Recheck after acquiring the session-creation lock, closing the external-call timeout race.
+        if (snapToken) await this.midtrans.cancelSnap(snapToken);
+        else if (order.payments.length) return; // Missing session provenance requires reconciliation, never guess.
         if (await this.midtrans.request(orderNumber, 'status')) return;
         for (const item of [...order.items].sort((a, b) =>
           a.productId.localeCompare(b.productId),
@@ -118,6 +180,11 @@ export class MaintenanceService implements OnModuleInit, OnModuleDestroy {
             data: { reserved: { decrement: item.quantity } },
           });
         }
+        await transitionWarehouseAllocations(tx, order.id, 'release');
+        await tx.payment.updateMany({
+          where: { orderId: id, status: 'PENDING' },
+          data: { status: 'EXPIRED' },
+        });
         await tx.order.update({
           where: { id },
           data: { status: 'CANCELLED', cancelledAt: new Date() },

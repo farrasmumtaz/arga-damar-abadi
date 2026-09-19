@@ -60,3 +60,7 @@ export class PurchaseOrderDto {
   @Type(() => PurchaseItemDto)
   items!: PurchaseItemDto[];
 }
+
+export class ReceivePurchaseOrderDto {
+  @IsUUID() warehouseId!: string;
+}

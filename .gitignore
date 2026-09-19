@@ -1,0 +1,6 @@
+# Deployment secrets and database exports must never enter Git.
+deploy/.env
+deploy/.env.*
+!deploy/.env.example
+deploy/backups/
+*.dump

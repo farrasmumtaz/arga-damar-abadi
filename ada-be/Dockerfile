@@ -8,7 +8,10 @@ COPY prisma ./prisma
 COPY prisma.config.ts ./
 COPY nest-cli.json tsconfig*.json ./
 COPY src ./src
-RUN npm run prisma:generate && npm run build
+RUN DATABASE_URL=postgresql://build:build@localhost:5432/build npm run prisma:generate && npm run build
+
+FROM build AS migration
+CMD ["npm", "run", "prisma:deploy"]
 
 FROM node:24-alpine AS production
 WORKDIR /app
