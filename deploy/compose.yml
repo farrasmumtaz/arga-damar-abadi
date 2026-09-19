@@ -33,6 +33,7 @@ services:
     build: ../ada-fe
     environment:
       API_URL: http://api:3000/api/v1
+      FRONTEND_ORIGIN: https://${APP_DOMAIN:?Set APP_DOMAIN}
     depends_on:
       api: { condition: service_healthy }
     restart: unless-stopped

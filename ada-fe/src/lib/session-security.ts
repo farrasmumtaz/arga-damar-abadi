@@ -50,12 +50,12 @@ export function parseRefreshCookie(headers: Headers): RefreshCookie | undefined 
   return undefined;
 }
 
-export function isSameOriginPost(request: { method: string; url: string; headers: Headers }): boolean {
+export function isSameOriginPost(request: { method: string; url: string; headers: Headers }, canonicalOrigin?: string): boolean {
   if (request.method !== 'POST') return false;
   const origin = request.headers.get('origin');
   const site = request.headers.get('sec-fetch-site');
   if (!origin || (site !== null && site !== 'same-origin')) return false;
-  try { return new URL(origin).origin === new URL(request.url).origin && origin === new URL(origin).origin; }
+  try { return new URL(origin).origin === new URL(canonicalOrigin ?? request.url).origin && origin === new URL(origin).origin; }
   catch { return false; }
 }
 

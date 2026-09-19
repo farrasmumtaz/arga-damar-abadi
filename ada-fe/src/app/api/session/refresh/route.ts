@@ -6,7 +6,7 @@ export const runtime = 'nodejs';
 const responseHeaders = { 'Cache-Control': 'no-store, private', 'Vary': 'Cookie, Origin', 'X-Content-Type-Options': 'nosniff' };
 
 export async function POST(request: NextRequest) {
-  if (!isSameOriginPost(request)) return NextResponse.json({ error: 'Permintaan sesi ditolak.' }, { status: 403, headers: responseHeaders });
+  if (!isSameOriginPost(request, process.env.FRONTEND_ORIGIN)) return NextResponse.json({ error: 'Permintaan sesi ditolak.' }, { status: 403, headers: responseHeaders });
   const currentExpiry = accessExpiresAt(request.cookies.get('access_token')?.value);
   if (currentExpiry && currentExpiry > Date.now() + 45_000) return NextResponse.json({ expiresAt: currentExpiry }, { headers: responseHeaders });
   const token = request.cookies.get('refresh_token')?.value;

@@ -12,6 +12,8 @@ test('refresh accepts only same origin POST', () => {
   assert.equal(isSameOriginPost(request('https://store.test', 'same-origin')), true);
   assert.equal(isSameOriginPost(request('https://evil.test', 'cross-site')), false);
   assert.equal(isSameOriginPost(request('https://store.test', 'same-origin', 'GET')), false);
+  assert.equal(isSameOriginPost({ ...request('https://store.test', 'same-origin'), url: 'http://web:3001/api/session/refresh' }, 'https://store.test'), true);
+  assert.equal(isSameOriginPost(request('https://evil.test', 'same-origin'), 'https://store.test'), false);
 });
 test('malformed expiry and refresh cookies are rejected', () => {
   assert.equal(accessExpiresAt('invalid'), undefined);

@@ -12,11 +12,15 @@
   }
   # Only this signed provider callback bypasses the frontend BFF.
   handle /api/v1/payments/webhooks/midtrans {
-    request_body { max_size 256KB }
+    request_body {
+      max_size 256KB
+    }
     reverse_proxy api:3000
   }
   handle {
-    request_body { max_size 7MB }
+    request_body {
+      max_size 7MB
+    }
     reverse_proxy web:3001
   }
 }
