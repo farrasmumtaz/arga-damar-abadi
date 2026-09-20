@@ -91,6 +91,8 @@ jobs:
       - run: npm run prisma:generate
       - run: npm run prisma:deploy
       - run: npm run test:e2e -- --runInBand
+      - name: Verify production catalog seed
+        run: psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f prisma/seed.production-catalog.sql
 
   container-build:
     runs-on: ubuntu-latest

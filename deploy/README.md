@@ -15,6 +15,7 @@ Mulai dengan satu replica frontend/backend. Refresh-token single-flight dan rate
 3. Salin `ada-be/.env.example` ke `deploy/.env.backend`; ganti DATABASE_URL dengan koneksi PostgreSQL yang mendukung transaksi/migrasi. JWT secrets harus acak, berbeda, minimal 32 karakter. Jangan commit file ini atau mengirim isinya ke chat.
 4. Gunakan Midtrans **sandbox** dulu. Notification URL: `https://<domain>/api/v1/payments/webhooks/midtrans`; finish URL: `https://<domain>/payment/finish`. Verifikasi signature dan ulangi webhook yang sama untuk membuktikan stok tidak berkurang dua kali.
 5. SMTP production, MAIL_FROM, Supabase Storage (public `product-images`, private `boq-private`) dan scanner ClamAV wajib diisi untuk mengaktifkan fitur terkait. ClamAV harus dapat dijangkau dari container, bukan `localhost` VPS. Jangan membuka port scanner ke internet.
+6. Untuk database baru, ikuti `docs/SUPABASE_INITIAL_DATA.md` setelah migration berhasil.
 6. `SHIPPING_PROVIDER=INTERNAL` adalah default. BITESHIP memerlukan API key dan origin postal code. Tracking ID harus berasal dari shipment Biteship, bukan nomor resi. WhatsApp membutuhkan opt-in customer, template utility disetujui (2 parameter body: subject/message), versi Graph API yang aktif, serta token server-only.
 7. Aktifkan NOTIFICATIONS_ENABLED hanya setelah SMTP diuji. Aktifkan MAINTENANCE_ENABLED setelah sandbox expiry/refund berhasil. Jalankan satu worker awalnya. Pengiriman notifikasi at-least-once: provider sukses lalu transaksi lokal gagal dapat menyebabkan pengiriman ulang.
 
