@@ -11,6 +11,9 @@ export class PrismaService
   constructor(config: ConfigService) {
     const adapter = new PrismaPg({
       connectionString: config.getOrThrow<string>('DATABASE_URL'),
+      // Keep serverless replicas from holding the shared database connection budget.
+      max: 2,
+      idleTimeoutMillis: 10_000,
     });
     super({ adapter });
   }

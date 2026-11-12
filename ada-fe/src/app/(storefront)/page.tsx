@@ -8,7 +8,7 @@ export default async function HomePage() {
     getProducts().then(products => ({ products, unavailable: false })).catch(() => ({ products: [], unavailable: true })),
     getCatalogOptions().catch(() => null),
   ]);
-  const categories = options?.categories.slice(0, 6) ?? [];
+  const categories = options?.categories ?? [];
   const brands = options?.brands.slice(0, 6) ?? [];
   return <>
     <section className="store-hero">
@@ -29,12 +29,12 @@ export default async function HomePage() {
     </section>
 
     <section className="container home-categories section" id="categories">
-      <div className="home-section-heading"><div><h2>Mulai dari kategori</h2><p>Temukan kebutuhan sesuai jenis pekerjaan.</p></div><Link className="store-text-link" href="/products">Lihat semua produk <ArrowRight size={16} /></Link></div>
+      <div className="home-section-heading"><div><h2>Semua kategori</h2><p>Temukan kebutuhan sesuai jenis pekerjaan.</p></div><Link className="store-text-link" href="/products">Cari dan filter produk <ArrowRight size={16} /></Link></div>
       {categories.length ? <div className="category-list">{categories.map(category => <Link href={`/products?categoryId=${category.id}`} className="category-link" key={category.id}><span>{category.name}</span><ArrowRight size={18} /></Link>)}</div> : <p className="catalog-notice" role="status">{options ? 'Kategori belum tersedia.' : 'Kategori belum dapat dimuat. Silakan coba kembali.'}</p>}
     </section>
 
     <section className="home-products section" id="products">
-      <div className="container"><div className="home-section-heading"><div><h2>Produk terbaru</h2><p>Pilihan terbaru dari katalog Arga Damar.</p></div><Link className="store-text-link" href="/products">Lihat semua produk <ArrowRight size={16} /></Link></div>
+      <div className="container"><div className="home-section-heading"><div><h2>Semua produk</h2><p>Seluruh produk aktif dari katalog Arga Damar.</p></div><Link className="store-text-link" href="/products">Cari dan filter produk <ArrowRight size={16} /></Link></div>
         {catalog.products.length ? <div className="product-grid">{catalog.products.map(product => <ProductCard key={product.id} product={product} />)}</div> : <div className="catalog-notice" role="status"><strong>{catalog.unavailable ? 'Katalog sementara tidak tersedia' : 'Belum ada produk ditampilkan'}</strong><p>{catalog.unavailable ? 'Silakan coba kembali beberapa saat lagi.' : 'Produk akan tampil setelah ditambahkan dan diaktifkan oleh admin.'}</p><Link className="store-text-link" href="/products">Buka katalog</Link></div>}
       </div>
     </section>

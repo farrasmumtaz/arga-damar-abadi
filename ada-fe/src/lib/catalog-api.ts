@@ -1,6 +1,7 @@
 import { apiRequest, ApiError } from './api';
 import type { Product } from './types';
 import { catalogApiQuery, type CatalogFilters } from './catalog-query';
+import { collectCatalogPages, type CatalogPage } from './catalog-pages';
 
 interface ApiProduct {
   id: string;
@@ -25,10 +26,10 @@ interface ProductPageResponse {
 export interface CatalogOption { id: string; name: string; slug: string }
 export async function getCatalogOptions() {
   const [categories, brands] = await Promise.all([
-    apiRequest<{ data: CatalogOption[] }>('/categories?isActive=true&limit=100'),
-    apiRequest<{ data: CatalogOption[] }>('/brands?isActive=true&limit=100'),
+    collectCatalogPages(page => apiRequest<CatalogPage<CatalogOption>>(`/categories?isActive=true&limit=100&page=${page}`)),
+    collectCatalogPages(page => apiRequest<CatalogPage<CatalogOption>>(`/brands?isActive=true&limit=100&page=${page}`)),
   ]);
-  return { categories: categories.data, brands: brands.data };
+  return { categories, brands };
 }
 
 export async function getCatalogPage(filters: CatalogFilters) {
@@ -72,10 +73,10 @@ function mapProduct(product: ApiProduct, index = 0): Product {
 }
 
 export async function getProducts(): Promise<Product[]> {
-    const response = await apiRequest<ProductPageResponse>(
-      '/products?limit=8&sortBy=createdAt&sortDirection=desc',
-    );
-    return response.data.map(mapProduct);
+  const products = await collectCatalogPages(page => apiRequest<ProductPageResponse>(
+    `/products?limit=100&page=${page}&sortBy=createdAt&sortDirection=desc`,
+  ));
+  return products.map(mapProduct);
 }
 
 export async function getProduct(slug: string): Promise<Product | undefined> {
