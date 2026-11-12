@@ -11,7 +11,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
     <section className="section admin-list-page">
       <p className="eyebrow"><span /> Access control</p>
       <h1>Pengguna</h1>
-      {query.error && <p className="form-error admin-message">{query.error}</p>}
+      {query.error && <p role="alert" className="form-error admin-message">{query.error}</p>}
       <div className="data-table user-admin-table">
         {users.map((user) => (
           <form action={updateUserAccessAction.bind(null, user.id)} key={user.id}>

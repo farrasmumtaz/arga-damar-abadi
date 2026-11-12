@@ -1,17 +1,10 @@
 import Link from 'next/link';
 
 export function SiteFooter() {
-  return (
-    <footer className="site-footer" id="about">
-      <div className="container footer-grid">
-        <div>
-          <div className="brand-mark footer-brand"><span className="brand-symbol">AD</span><span><strong>ARGA DAMAR</strong><small>Industrial Supply</small></span></div>
-          <p>Partner pengadaan material dan peralatan terpercaya untuk kebutuhan rumah, usaha, dan proyek Anda.</p>
-        </div>
-        <div><h4>Belanja</h4><Link href="/products">Semua produk</Link><Link href="/#categories">Kategori</Link><Link href="/account/profile">Akun saya</Link></div>
-        <div><h4>Bantuan</h4><span>Senin–Sabtu, 08.00–17.00</span><span>sales@argadamar.co.id</span><span>+62 21 555 0188</span></div>
-      </div>
-      <div className="container footer-bottom">© 2026 PT Arga Damar Abadi <span>Harga transparan · Produk terkurasi · Dukungan teknis</span></div>
-    </footer>
-  );
+  return <footer className="site-footer" id="about"><div className="container footer-grid">
+    <div className="footer-intro"><Link href="/" className="footer-wordmark">ARGA DAMAR<span>ABADI</span></Link><p>Material dan peralatan listrik untuk kebutuhan rumah, usaha, dan proyek.</p></div>
+    <div><h2>Jelajahi</h2><Link href="/products">Katalog produk</Link><Link href="/#categories">Kategori</Link><Link href="/quotation">Penawaran proyek</Link></div>
+    <div><h2>Akun</h2><Link href="/account/profile">Profil & alamat</Link><Link href="/account/orders">Pesanan saya</Link><Link href="/account/quotations">Penawaran saya</Link></div>
+    <div><h2>Hubungi kami</h2><a href="mailto:sales@argadamar.co.id">sales@argadamar.co.id</a><a href="tel:+62215550188">+62 21 555 0188</a><span>Senin–Sabtu, 08.00–17.00</span></div>
+  </div><div className="container footer-bottom"><span>© {new Date().getFullYear()} PT Arga Damar Abadi</span><span>Foto ilustrasi dari <a href="https://unsplash.com" target="_blank" rel="noreferrer">Unsplash</a></span></div></footer>;
 }

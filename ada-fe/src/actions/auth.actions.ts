@@ -3,6 +3,9 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import type { AuthResponse } from '@/lib/types';
+import { addToCartAction } from './cart.actions';
+import { cartIntentProduct } from '@/lib/cart-intent';
+import { destinationAfterLogin } from '@/lib/admin-role';
 
 const API_URL = process.env.API_URL ?? 'http://localhost:3000/api/v1';
 
@@ -82,7 +85,10 @@ export async function loginAction(
   if (!result.data) return { error: result.error };
 
   await saveSession(result.data, result.refreshToken);
-  redirect(safeReturnTo(returnTo));
+  const destination = destinationAfterLogin(result.data.user.role, safeReturnTo(returnTo));
+  if (destination.startsWith('/admin')) (await cookies()).delete('pending_cart_product');
+  else await resumeCart(destination);
+  redirect(destination);
 }
 
 export async function registerAction(
@@ -107,6 +113,7 @@ export async function registerAction(
   if (!result.data) return { error: result.error };
 
   await saveSession(result.data, result.refreshToken);
+  await resumeCart(returnTo);
   redirect(safeReturnTo(returnTo));
 }
 
@@ -122,5 +129,15 @@ export async function logoutAction(): Promise<void> {
   }
   cookieStore.delete('access_token');
   cookieStore.delete('refresh_token');
+  cookieStore.delete('pending_cart_product');
   redirect('/');
+}
+
+async function resumeCart(returnTo: string): Promise<void> {
+  const store = await cookies();
+  const productId = cartIntentProduct(safeReturnTo(returnTo), store.get('pending_cart_product')?.value);
+  store.delete('pending_cart_product');
+  if (productId) {
+    await addToCartAction(productId);
+  }
 }

@@ -27,7 +27,7 @@ export function AuthForm({ mode, action }: AuthFormProps) {
           <span>Nama lengkap</span>
           <div className="input-shell">
             <UserRound size={18} />
-            <input name="fullName" placeholder="Nama Anda" required />
+            <input name="fullName" autoComplete="name" placeholder="Nama Anda" required />
           </div>
         </label>
       )}
@@ -35,7 +35,7 @@ export function AuthForm({ mode, action }: AuthFormProps) {
         <span>Email</span>
         <div className="input-shell">
           <Mail size={18} />
-          <input name="email" type="email" placeholder="nama@email.com" required />
+          <input name="email" type="email" autoComplete="username" aria-describedby={state.error ? 'auth-error' : undefined} placeholder="nama@email.com" required />
         </div>
       </label>
       {registering && (
@@ -43,7 +43,7 @@ export function AuthForm({ mode, action }: AuthFormProps) {
           <span>Nomor WhatsApp <small>(opsional)</small></span>
           <div className="input-shell">
             <Phone size={18} />
-            <input name="phone" placeholder="+628123456789" />
+            <input name="phone" type="tel" autoComplete="tel" placeholder="+628123456789" />
           </div>
         </label>
       )}
@@ -53,6 +53,8 @@ export function AuthForm({ mode, action }: AuthFormProps) {
           <LockKeyhole size={18} />
           <input
             name="password"
+            autoComplete={registering ? 'new-password' : 'current-password'}
+            aria-describedby={state.error ? 'auth-error' : registering ? 'password-hint' : undefined}
             type={showPassword ? 'text' : 'password'}
             minLength={registering ? 8 : undefined}
             placeholder={registering ? 'Minimal 8 karakter' : 'Password Anda'}
@@ -77,6 +79,7 @@ export function AuthForm({ mode, action }: AuthFormProps) {
               <LockKeyhole size={18} />
               <input
                 name="passwordConfirmation"
+                autoComplete="new-password"
                 type={showPasswordConfirmation ? 'text' : 'password'}
                 minLength={8}
                 placeholder="Ulangi password"
@@ -93,10 +96,10 @@ export function AuthForm({ mode, action }: AuthFormProps) {
               </button>
             </div>
           </label>
-          <p className="password-hint">Gunakan minimal 8 karakter dengan huruf besar, kecil, angka, dan simbol.</p>
+          <p className="password-hint" id="password-hint">Gunakan minimal 8 karakter dengan huruf besar, kecil, angka, dan simbol.</p>
         </>
       )}
-      {state.error && <p className="form-error">{state.error}</p>}
+      {state.error && <p className="form-error" id="auth-error" role="alert">{state.error}</p>}
       <button className="button button-primary auth-submit" disabled={pending}>
         {pending ? 'Memproses...' : registering ? 'Buat akun' : 'Masuk'}
         {!pending && <ArrowRight size={18} />}

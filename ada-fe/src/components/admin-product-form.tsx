@@ -9,7 +9,7 @@ export function AdminProductForm({ action, product, categories, brands }: { acti
   const [state, formAction, pending] = useActionState(action, {});
   const [uploading, setUploading] = useState(false);
   return <form action={formAction} className="admin-form" onSubmit={(event) => { if (uploading) event.preventDefault(); }}>
-    {state.error && <p className="form-error">{state.error}</p>}
+    {state.error && <p role="alert" className="form-error">{state.error}</p>}
     <div className="form-row"><label className="field"><span>Nama produk</span><input name="name" defaultValue={product?.name} required maxLength={200}/></label><label className="field"><span>SKU</span><input name="sku" defaultValue={product?.sku} required maxLength={80}/></label></div>
     <div className="form-row"><label className="field"><span>Kategori</span><select name="categoryId" defaultValue={product?.categoryId} required><option value="">Pilih kategori</option>{categories.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label><label className="field"><span>Brand</span><select name="brandId" defaultValue={product?.brandId ?? ''}><option value="">Tanpa brand</option>{brands.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label></div>
     <div className="form-row"><label className="field"><span>Harga</span><input name="price" type="number" min="0" step="0.01" defaultValue={product?.price} required/></label><label className="field"><span>Berat (gram)</span><input name="weightGram" type="number" min="0" defaultValue={product?.weightGram ?? 0}/></label></div>

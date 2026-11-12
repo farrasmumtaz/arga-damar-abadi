@@ -149,6 +149,20 @@ suite(
           .send({ productId: product.id, quantity: 1 })
           .expect(201);
       const keys = [randomUUID(), randomUUID()];
+      await expect(
+        orders.checkout(first.user.id, {
+          addressId: addresses[0].id,
+          idempotencyKey: randomUUID(),
+          expectedTotal: '1.00',
+        }),
+      ).rejects.toThrow('Total pesanan berubah');
+      expect(
+        (
+          await prisma.inventory.findUniqueOrThrow({
+            where: { productId: product.id },
+          })
+        ).reserved,
+      ).toBe(0);
       const results = await Promise.allSettled(
         [first, second].map((session, i) =>
           orders.checkout(session.user.id, {

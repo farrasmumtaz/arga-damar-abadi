@@ -27,14 +27,15 @@ export interface CatalogOption { id: string; name: string }
 export interface AdminCategory extends CatalogOption { slug: string; parentId: string | null; isActive: boolean; sortOrder: number }
 export interface AdminBrand extends CatalogOption { slug: string; logoUrl: string | null; isActive: boolean }
 export interface AdminUser { id: string; email: string; fullName: string; phone: string | null; role: 'CUSTOMER' | 'STAFF' | 'ADMIN' | 'SUPER_ADMIN'; isActive: boolean; createdAt: string; _count: { orders: number; quotations: number } }
-export async function getAdminInventory() { return adminRequest<{ data: AdminInventory[] }>('/inventory?limit=100'); }
+export interface AdminListPage<T> { data: T[]; meta: { page: number; total: number; totalPages: number } }
+export async function getAdminInventory(page = 1, search = '') { return adminRequest<AdminListPage<AdminInventory>>(`/inventory?${new URLSearchParams({ page: String(page), limit: '25', search })}`); }
 export async function getInventoryDetail(productId: string) { return adminRequest<AdminInventory>(`/inventory/${productId}`); }
 export async function getStockMovements(productId: string) { return adminRequest<StockMovement[]>(`/inventory/${productId}/movements`); }
 export async function getAdminOrders() { return adminRequest<AdminOrder[]>('/orders/admin/all'); }
 export async function getAdminOrder(id: string) { return adminRequest<AdminOrder>(`/orders/admin/${id}`); }
 export async function getAdminQuotations() { return adminRequest<AdminQuotation[]>('/quotations/admin'); }
 export async function getAdminQuotation(id: string) { return adminRequest<AdminQuotation>(`/quotations/admin/${id}`); }
-export async function getAdminProducts() { return adminRequest<{ data: AdminProduct[] }>('/products/admin?limit=100'); }
+export async function getAdminProducts(page = 1, search = '') { return adminRequest<AdminListPage<AdminProduct>>(`/products/admin?${new URLSearchParams({ page: String(page), limit: '25', search })}`); }
 export async function getAdminProduct(id: string) { return adminRequest<AdminProduct>(`/products/admin/${id}`); }
 export async function getCatalogOptions() {
   const [categories, brands] = await Promise.all([
@@ -51,3 +52,9 @@ export async function getAdminCatalog() {
   return { categories: categories.data, brands: brands.data };
 }
 export async function getAdminUsers() { return adminRequest<AdminUser[]>('/users/admin'); }
+export async function getAdminOrderPage(page: number, search: string, status: string) {
+  return adminRequest<AdminListPage<{ id: string; reference: string; name: string; status: string; amount: string }>>(`/admin/reports/orders?${new URLSearchParams({ page: String(page), limit: '25', ...(search ? { search } : {}), ...(status ? { status } : {}) })}`);
+}
+export async function getWarehouseOptions() {
+  return (await adminRequest<Array<{ id: string; code: string; name: string; isActive: boolean }>>('/warehouses?limit=100')).filter(warehouse => warehouse.isActive);
+}

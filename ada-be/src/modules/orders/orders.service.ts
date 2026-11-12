@@ -137,6 +137,11 @@ export class OrdersService {
               : null;
             const discountAmount =
               promotion?.discountAmount ?? new Prisma.Decimal(0);
+            const total = subtotal.plus(shippingCost).minus(discountAmount);
+            if (dto.expectedTotal && !total.equals(dto.expectedTotal))
+              throw new ConflictException(
+                'Total pesanan berubah. Hitung ulang dan konfirmasikan total terbaru.',
+              );
             const order = await tx.order.create({
               data: {
                 userId,
@@ -147,7 +152,7 @@ export class OrdersService {
                 shippingProvider: shippingRate.provider,
                 promotionCode: promotion?.code ?? null,
                 discountAmount,
-                total: subtotal.plus(shippingCost).minus(discountAmount),
+                total,
                 customerNote: dto.customerNote ?? null,
                 shippingAddress: {
                   label: address.label,
@@ -224,7 +229,10 @@ export class OrdersService {
   }
 
   async findMine(userId: string, query: QueryOrderDto) {
-    const where = { userId } satisfies Prisma.OrderWhereInput;
+    const where = {
+      userId,
+      ...(query.orderNumber ? { orderNumber: query.orderNumber } : {}),
+    } satisfies Prisma.OrderWhereInput;
     const [data, total] = await this.prisma.$transaction([
       this.prisma.order.findMany({
         where,

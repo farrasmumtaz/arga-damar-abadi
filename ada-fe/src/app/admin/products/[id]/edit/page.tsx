@@ -1,3 +1,4 @@
+import { ApiError } from '@/lib/api';
 import { notFound } from 'next/navigation';
 import { updateProductAction } from '@/actions/admin-product.actions';
 import { AdminProductForm } from '@/components/admin-product-form';
@@ -8,5 +9,5 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   try {
     const [product, options] = await Promise.all([getAdminProduct(id), getCatalogOptions()]);
     return <section className="section admin-editor"><p className="eyebrow"><span/> Catalog</p><h1>Edit produk</h1><AdminProductForm action={updateProductAction.bind(null, id)} product={product} {...options}/></section>;
-  } catch { notFound(); }
+  } catch (error: unknown) { if (error instanceof ApiError && error.status === 404) notFound(); throw error; }
 }

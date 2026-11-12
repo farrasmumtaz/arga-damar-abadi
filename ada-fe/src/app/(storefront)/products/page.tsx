@@ -15,14 +15,21 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
   ]);
   const categories = options?.categories ?? []; const brands = options?.brands ?? [];
   return <section className="container section catalog-page">
-    <div className="section-heading"><div><p className="eyebrow"><span/>Katalog toko</p><h1>Temukan produk Anda</h1><p>Lihat produk dan harga tanpa login.</p></div></div>
+    <div className="section-heading"><div><h1>Katalog produk</h1><p>Cari produk, bandingkan harga, dan periksa ketersediaannya.</p></div></div>
     <form action="/products" method="get" className="catalog-filters">
-      <label>Cari produk<input type="search" name="search" defaultValue={filters.search} maxLength={200} placeholder="Nama produk atau SKU"/></label>
-      <label>Kategori<select name="categoryId" defaultValue={filters.categoryId}><option value="">Semua kategori</option>{filters.categoryId && !categories.some(item => item.id === filters.categoryId) && <option value={filters.categoryId}>Kategori terpilih</option>}{categories.map(item => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
-      <label>Brand<select name="brandId" defaultValue={filters.brandId}><option value="">Semua brand</option>{filters.brandId && !brands.some(item => item.id === filters.brandId) && <option value={filters.brandId}>Brand terpilih</option>}{brands.map(item => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
-      <label>Harga minimum<input type="number" name="minPrice" min="0" max="9999999999999.99" step="0.01" defaultValue={filters.minPrice} placeholder="Rp"/></label>
-      <label>Harga maksimum<input type="number" name="maxPrice" min="0" max="9999999999999.99" step="0.01" defaultValue={filters.maxPrice} placeholder="Rp"/></label>
-      <label>Urutkan<select name="sort" defaultValue={filters.sort}>{catalogSortOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+      <div className="catalog-primary-filters">
+        <label>Cari produk<input type="search" name="search" defaultValue={filters.search} maxLength={200} placeholder="Nama produk atau SKU"/></label>
+        <label>Urutkan<select name="sort" defaultValue={filters.sort}>{catalogSortOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+      </div>
+      <details className="catalog-advanced" open={Boolean(filters.categoryId || filters.brandId || filters.minPrice || filters.maxPrice)}>
+        <summary>Filter kategori, brand & harga</summary>
+        <div className="catalog-filter-fields">
+          <label>Kategori<select name="categoryId" defaultValue={filters.categoryId}><option value="">Semua kategori</option>{filters.categoryId && !categories.some(item => item.id === filters.categoryId) && <option value={filters.categoryId}>Kategori terpilih</option>}{categories.map(item => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
+          <label>Brand<select name="brandId" defaultValue={filters.brandId}><option value="">Semua brand</option>{filters.brandId && !brands.some(item => item.id === filters.brandId) && <option value={filters.brandId}>Brand terpilih</option>}{brands.map(item => <option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
+          <label>Harga minimum<input type="number" name="minPrice" min="0" max="9999999999999.99" step="0.01" defaultValue={filters.minPrice} placeholder="Rp"/></label>
+          <label>Harga maksimum<input type="number" name="maxPrice" min="0" max="9999999999999.99" step="0.01" defaultValue={filters.maxPrice} placeholder="Rp"/></label>
+        </div>
+      </details>
       <div className="catalog-filter-actions"><button className="button button-primary">Terapkan</button><Link href="/products" className="text-link">Reset filter</Link></div>
     </form>
     {!options && <p role="status">Pilihan kategori dan brand belum dapat dimuat. Pencarian nama tetap dapat digunakan.</p>}

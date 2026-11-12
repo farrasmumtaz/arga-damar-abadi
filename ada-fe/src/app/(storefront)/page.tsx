@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, Building2, Headphones, PackageCheck, ShieldCheck, Sparkles, Truck } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { ProductCard } from '@/components/product-card';
 import { getProducts, getCatalogOptions } from '@/lib/catalog-api';
 
@@ -8,83 +8,42 @@ export default async function HomePage() {
     getProducts().then(products => ({ products, unavailable: false })).catch(() => ({ products: [], unavailable: true })),
     getCatalogOptions().catch(() => null),
   ]);
-  const products = catalog.products;
   const categories = options?.categories.slice(0, 6) ?? [];
   const brands = options?.brands.slice(0, 6) ?? [];
-  return (
-    <>
-      <section className="hero">
-        <div className="container hero-grid">
-          <div className="hero-copy">
-            <p className="eyebrow"><span /> Solusi pengadaan terpercaya</p>
-            <h1>Material terbaik.<br /><em>Proyek tanpa kompromi.</em></h1>
-            <p className="hero-lead">Produk teknik dan material terkurasi untuk menjaga pekerjaan Anda bergerak—tepat mutu, tepat waktu.</p>
-            <div className="hero-actions">
-              <Link className="button button-primary" href="/products">Lihat produk <ArrowRight size={18} /></Link>
-              <Link className="button button-secondary" href="/quotation">Minta penawaran</Link>
-            </div>
-            <div className="hero-proof"><span><strong>Katalog publik</strong> Tanpa login</span><span><strong>Pengadaan proyek</strong> Penawaran khusus</span></div>
-          </div>
-          <div className="hero-art" aria-hidden="true">
-            <span className="blueprint-grid" />
-            <div className="hero-disc"><span>AD</span></div>
-            <div className="floating-label label-one"><small>Kualitas</small><strong>Teruji</strong></div>
-            <div className="floating-label label-two"><small>Pengiriman</small><strong>Terpantau</strong></div>
-          </div>
+  return <>
+    <section className="store-hero">
+      <div className="container store-hero-grid">
+        <div className="store-hero-copy">
+          <h1>Material listrik<br />untuk proyek</h1>
+          <p>Temukan material, perlengkapan listrik, dan perkakas kerja dalam satu katalog. Lihat harga dan ketersediaan tanpa masuk.</p>
+          <div className="store-hero-actions"><Link className="button button-primary" href="/products">Jelajahi katalog <ArrowRight size={18} /></Link><Link className="store-text-link" href="/quotation">Minta penawaran proyek</Link></div>
+          <div className="store-hero-note"><strong>Belanja sesuai kebutuhan</strong><span>Pilih produk langsung, atau kirim daftar kebutuhan proyek kepada tim kami.</span></div>
         </div>
-      </section>
-
-      <section className="trust-strip">
-        <div className="container trust-grid">
-          <span><BadgeCheck /> Produk original<small>Jaminan mutu terverifikasi</small></span>
-          <span><Truck /> Pengiriman andal<small>Ke seluruh Indonesia</small></span>
-          <span><Headphones /> Konsultasi teknis<small>Tim siap membantu</small></span>
-          <span><PackageCheck /> Stok terpantau<small>Informasi selalu aktual</small></span>
+        <div className="hero-gallery" aria-label="Ilustrasi instalasi dan perlengkapan proyek">
+          <figure className="hero-photo hero-photo-main"><img src="/images/electrical.webp" alt="Teknisi melakukan pekerjaan instalasi listrik" width="1000" height="668" fetchPriority="high" /></figure>
+          <figure className="hero-photo hero-photo-product"><img src="/images/drill.webp" alt="Perkakas bor listrik" width="900" height="506" /></figure>
+          <figure className="hero-photo hero-photo-work"><img src="/images/tools.webp" alt="Peralatan tangan di meja kerja" width="800" height="533" loading="lazy" /></figure>
+          <figure className="hero-photo hero-photo-project"><img src="/images/project.webp" alt="Pekerjaan konstruksi di lokasi proyek" width="1000" height="758" loading="lazy" /></figure>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section className="section container" id="categories">
-        <div className="section-heading"><div><p className="eyebrow"><span /> Jelajahi</p><h2>Kategori pilihan</h2></div><Link className="text-link" href="/products">Semua produk <ArrowRight size={16} /></Link></div>
-        <div className="category-grid">
-          {categories.map((category, index) => (
-            <Link href={`/products?categoryId=${category.id}`} className="category-card" key={category.id}>
-              <small>0{index + 1}</small><div><h3>{category.name}</h3><p>Lihat produk kategori ini</p></div><ArrowRight size={18} />
-            </Link>
-          ))}
-        </div>
-        {!categories.length && <p>{options ? 'Kategori belum tersedia.' : 'Kategori belum dapat dimuat.'}</p>}
-      </section>
+    <section className="container home-categories section" id="categories">
+      <div className="home-section-heading"><div><h2>Mulai dari kategori</h2><p>Temukan kebutuhan sesuai jenis pekerjaan.</p></div><Link className="store-text-link" href="/products">Lihat semua produk <ArrowRight size={16} /></Link></div>
+      {categories.length ? <div className="category-list">{categories.map(category => <Link href={`/products?categoryId=${category.id}`} className="category-link" key={category.id}><span>{category.name}</span><ArrowRight size={18} /></Link>)}</div> : <p className="catalog-notice" role="status">{options ? 'Kategori belum tersedia.' : 'Kategori belum dapat dimuat. Silakan coba kembali.'}</p>}
+    </section>
 
-      <section className="products-section" id="products">
-        <div className="container section">
-          <div className="section-heading"><div><p className="eyebrow"><span /> Dari katalog kami</p><h2>Produk terbaru</h2></div><Link className="text-link" href="/products">Lihat semua produk <ArrowRight size={16}/></Link></div>
-          <div className="product-grid">{products.map((product) => <ProductCard key={product.id} product={product} />)}</div>
-          {!products.length && <div className="empty-state"><h3>{catalog.unavailable ? 'Katalog sementara tidak tersedia' : 'Belum ada produk ditampilkan'}</h3><p>{catalog.unavailable ? 'Silakan coba kembali beberapa saat lagi.' : 'Produk akan tampil setelah ditambahkan dan diaktifkan oleh admin.'}</p></div>}
-        </div>
-      </section>
+    <section className="home-products section" id="products">
+      <div className="container"><div className="home-section-heading"><div><h2>Produk terbaru</h2><p>Pilihan terbaru dari katalog Arga Damar.</p></div><Link className="store-text-link" href="/products">Lihat semua produk <ArrowRight size={16} /></Link></div>
+        {catalog.products.length ? <div className="product-grid">{catalog.products.map(product => <ProductCard key={product.id} product={product} />)}</div> : <div className="catalog-notice" role="status"><strong>{catalog.unavailable ? 'Katalog sementara tidak tersedia' : 'Belum ada produk ditampilkan'}</strong><p>{catalog.unavailable ? 'Silakan coba kembali beberapa saat lagi.' : 'Produk akan tampil setelah ditambahkan dan diaktifkan oleh admin.'}</p><Link className="store-text-link" href="/products">Buka katalog</Link></div>}
+      </div>
+    </section>
 
-      <section className="container cta-panel">
-        <div><p className="eyebrow light"><span /> Kebutuhan proyek</p><h2>Butuh jumlah besar atau<br />spesifikasi khusus?</h2></div>
-        <div><p>Tim kami siap menyiapkan penawaran terbaik sesuai kebutuhan dan jadwal proyek Anda.</p><Link className="button button-gold" href="mailto:sales@argadamar.co.id">Minta penawaran <ArrowRight size={18} /></Link></div>
-      </section>
+    <section className="home-project section"><div className="container home-project-grid">
+      <div className="home-project-copy"><h2>Pengadaan proyek, lebih terarah</h2><p>Butuh beberapa barang sekaligus atau spesifikasi khusus? Kirim daftar kebutuhan Anda dan tim kami akan menyiapkan penawaran.</p><Link className="button button-primary" href="/quotation">Buat permintaan penawaran <ArrowRight size={18} /></Link></div>
+      <div className="home-project-steps"><div><strong>Pilih kebutuhan</strong><span>Cari produk atau tuliskan spesifikasi yang Anda perlukan.</span></div><div><strong>Kirim permintaan</strong><span>Tambahkan jumlah, detail proyek, dan lampiran bila tersedia.</span></div><div><strong>Tinjau penawaran</strong><span>Periksa harga dan masa berlaku di akun Anda.</span></div></div>
+    </div></section>
 
-      {brands.length > 0 && <section className="brand-section container section" aria-label="Brand tersedia">
-        <p className="eyebrow"><span /> Brand terpercaya</p>
-        <div className="brand-row">
-          {brands.map(brand => <Link href={`/products?brandId=${brand.id}`} key={brand.id}>{brand.name}</Link>)}
-        </div>
-      </section>}
-
-      <section className="advantages-section">
-        <div className="container section">
-          <div className="section-heading"><div><p className="eyebrow"><span /> Mengapa Arga Damar</p><h2>Partner teknis yang<br />dapat diandalkan</h2></div><p className="section-note">Lebih dari sekadar pemasok—kami membantu pelanggan memilih solusi yang tepat untuk setiap kebutuhan.</p></div>
-          <div className="advantage-grid">
-            <article><ShieldCheck /><span>01</span><h3>Kualitas terverifikasi</h3><p>Produk original dari brand dan distributor yang dapat dipertanggungjawabkan.</p></article>
-            <article><Building2 /><span>02</span><h3>Siap kebutuhan proyek</h3><p>Penawaran volume, spesifikasi khusus, dan jadwal pengadaan yang terencana.</p></article>
-            <article><Sparkles /><span>03</span><h3>Layanan profesional</h3><p>Informasi produk transparan dengan dukungan tim yang responsif.</p></article>
-          </div>
-        </div>
-      </section>
-    </>
-  );
+    {brands.length > 0 && <section className="container home-brands section"><div><h2>Brand di katalog</h2><p>Jelajahi pilihan berdasarkan brand.</p></div><div className="brand-list">{brands.map(brand => <Link href={`/products?brandId=${brand.id}`} key={brand.id}>{brand.name}</Link>)}</div></section>}
+  </>;
 }

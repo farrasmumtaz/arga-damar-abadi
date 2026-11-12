@@ -4,3 +4,4 @@ deploy/.env.*
 !deploy/.env.example
 deploy/backups/
 *.dump
+.taste-skill/

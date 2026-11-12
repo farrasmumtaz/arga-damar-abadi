@@ -4,6 +4,7 @@ import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { OrdersService } from './orders.service';
 import { ShippingCostService } from './shipping-cost.service';
 import { PromotionsService } from '../promotions/promotions.service';
+import { Prisma } from '../../generated/prisma/client';
 
 describe('OrdersService', () => {
   let service: OrdersService;
@@ -61,5 +62,57 @@ describe('OrdersService', () => {
     await expect(service.findOne('user-id', 'order-id')).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('rejects a changed checkout total before creating an order', async () => {
+    const create = jest.fn();
+    const tx = {
+      address: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({ id: 'address', postalCode: '12345' }),
+      },
+      cart: {
+        findUnique: jest.fn().mockResolvedValue({
+          items: [
+            {
+              productId: 'product',
+              quantity: 1,
+              product: {
+                id: 'product',
+                name: 'Kabel',
+                status: 'ACTIVE',
+                price: new Prisma.Decimal('1000.25'),
+                weightGram: 500,
+              },
+            },
+          ],
+        }),
+      },
+      $queryRaw: jest.fn().mockResolvedValue([{ quantity: 5, reserved: 0 }]),
+      inventory: { update: jest.fn() },
+      order: { create },
+    };
+    const prisma = {
+      order: { findUnique: jest.fn().mockResolvedValue(null) },
+      $transaction: jest.fn(
+        (callback: (client: typeof tx) => Promise<unknown>) => callback(tx),
+      ),
+    };
+    const checkout = new OrdersService(
+      prisma as unknown as PrismaService,
+      {
+        resolve: () => ({ amount: 20000, provider: 'INTERNAL' }),
+      } as unknown as ShippingCostService,
+      {} as PromotionsService,
+    );
+    await expect(
+      checkout.checkout('user', {
+        addressId: 'address',
+        idempotencyKey: 'key',
+        expectedTotal: '21000.00',
+      }),
+    ).rejects.toThrow('Total pesanan berubah');
+    expect(create).not.toHaveBeenCalled();
   });
 });

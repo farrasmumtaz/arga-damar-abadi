@@ -11,11 +11,11 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
   return (
     <section className="auth-page">
       <div className="auth-card">
-        <p className="eyebrow"><span /> Mulai berbelanja</p><h1>Buat akun baru</h1><p>Simpan detail Anda untuk proses pembayaran yang lebih cepat.</p>
+        <h1>Buat akun baru</h1><p>Simpan alamat dan pantau kebutuhan Anda di satu tempat.</p>
         <AuthForm mode="register" action={action} />
         <p className="auth-switch">Sudah memiliki akun? <Link href={`/login?returnTo=${encodeURIComponent(returnTo)}`}>Masuk</Link></p>
       </div>
-      <div className="auth-aside register-aside"><span className="blueprint-grid" /><div><small>MEMBER BENEFIT</small><blockquote>Riwayat pesanan, checkout lebih cepat, dan dukungan khusus.</blockquote><p>Akun customer selalu gratis.</p></div></div>
+      <div className="auth-aside register-aside"><img src="/images/project.webp" alt="" width="1000" height="758"/><div><h2>Satu akun untuk setiap kebutuhan.</h2><p>Dari pesanan harian hingga penawaran proyek.</p></div></div>
     </section>
   );
 }

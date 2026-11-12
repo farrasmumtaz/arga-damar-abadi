@@ -16,9 +16,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <section className="auth-page">
       <div className="auth-card">
-        <p className="eyebrow"><span /> Selamat datang</p>
-        <h1>Masuk ke akun Anda</h1>
-        <p>Kelola pesanan dan lanjutkan pembayaran dengan aman.</p>
+        <h1>Masuk ke akun</h1>
+        <p>Lanjutkan belanja, lihat pesanan, dan kelola penawaran Anda.</p>
         <AuthForm mode="login" action={action} />
         <p className="auth-switch"><Link href="/forgot-password">Lupa password?</Link></p>
         <p className="auth-switch">
@@ -28,16 +27,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </Link>
         </p>
       </div>
-      <div className="auth-aside">
-        <span className="blueprint-grid" />
-        <div>
-          <small>ARGA DAMAR</small>
-          <blockquote>
-            “Pengadaan yang baik dimulai dari partner yang dapat dipercaya.”
-          </blockquote>
-          <p>Material terkurasi · Harga transparan · Dukungan teknis</p>
-        </div>
-      </div>
+      <div className="auth-aside"><img src="/images/electrical.webp" alt="" width="1000" height="668"/><div><h2>Kebutuhan proyek, tersimpan rapi.</h2><p>Lihat kembali pesanan dan penawaran dalam satu akun.</p></div></div>
     </section>
   );
 }

@@ -16,6 +16,16 @@ export async function payOrderAction(orderId: string): Promise<void> {
   redirect(snap.redirect_url);
 }
 export async function cancelOrderAction(orderId: string): Promise<void> {
-  await authFetch(`/orders/${orderId}/cancel`, 'POST');
-  redirect(`/account/orders/${orderId}`);
+  let errorMessage = '';
+  try {
+    const response = await authFetch(`/orders/${orderId}/cancel`, 'POST');
+    if (!response.ok) {
+      const data: unknown = await response.json().catch(() => null);
+      errorMessage = data && typeof data === 'object' && 'message' in data ? String(data.message) : 'Pesanan tidak dapat dibatalkan.';
+    }
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'digest' in error) throw error;
+    errorMessage = 'Koneksi terputus. Periksa status pesanan sebelum mencoba kembali.';
+  }
+  redirect(`/account/orders/${orderId}?${new URLSearchParams(errorMessage ? { error: errorMessage } : { saved: '1' })}`);
 }

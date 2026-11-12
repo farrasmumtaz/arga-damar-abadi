@@ -6,7 +6,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { IsOptional, IsUUID } from 'class-validator';
+import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -14,10 +14,12 @@ import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface
 import { PrismaService } from '../../infrastructure/prisma/prisma.service';
 import { Prisma } from '../../generated/prisma/client';
 import { ShippingCostService } from './shipping-cost.service';
+import { PromotionsService } from '../promotions/promotions.service';
 
 class ShippingQueryDto {
   @IsUUID() addressId!: string;
   @IsOptional() @IsUUID() productId?: string;
+  @IsOptional() @IsString() @MaxLength(40) promotionCode?: string;
 }
 @Controller('shipping')
 @UseGuards(JwtAuthGuard)
@@ -25,6 +27,7 @@ export class ShippingController {
   constructor(
     private readonly prisma: PrismaService,
     private readonly shipping: ShippingCostService,
+    private readonly promotions: PromotionsService,
   ) {}
   @Get('quote')
   @Throttle({ default: { ttl: 60_000, limit: 10 } })
@@ -69,12 +72,30 @@ export class ShippingController {
       (sum, item) => sum.plus(item.product.price.mul(item.quantity)),
       new Prisma.Decimal(0),
     );
-    return this.shipping.quote(
+    const rate = await this.shipping.quote(
       weight,
       value.toString(),
       user.id,
       address.id,
       address.postalCode,
     );
+    const promotion = query.promotionCode
+      ? await this.prisma.$transaction((tx) =>
+          this.promotions.evaluate(
+            tx,
+            query.promotionCode!,
+            user.id,
+            value,
+            false,
+          ),
+        )
+      : null;
+    const discount = promotion?.discountAmount ?? new Prisma.Decimal(0);
+    return {
+      ...rate,
+      subtotal: value.toFixed(2),
+      discountAmount: discount.toFixed(2),
+      total: value.minus(discount).plus(rate.amount).toFixed(2),
+    };
   }
 }

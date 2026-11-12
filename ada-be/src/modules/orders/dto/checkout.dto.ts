@@ -12,6 +12,11 @@ export class CheckoutDto {
   @IsUUID() idempotencyKey!: string;
 
   @IsOptional()
+  @IsString()
+  @Matches(/^(0|[1-9][0-9]{0,12})(\.[0-9]{1,2})?$/)
+  expectedTotal?: string;
+
+  @IsOptional()
   @IsUUID()
   productId?: string;
 

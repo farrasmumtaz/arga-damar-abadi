@@ -3,6 +3,7 @@
 import { getActionAccessToken } from '@/lib/session-server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
 
 const API_URL = process.env.API_URL ?? 'http://localhost:3000/api/v1';
 
@@ -24,6 +25,12 @@ async function mutateCart(path: string, method: string, body?: unknown) {
 }
 
 export async function addToCartAction(productId: string): Promise<void> {
+  if (!(await getActionAccessToken())) {
+    (await cookies()).set('pending_cart_product', productId, {
+      httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 600,
+    });
+    redirect('/login?returnTo=%2Fcart');
+  }
   await mutateCart('/cart/items', 'POST', { productId, quantity: 1 });
   redirect('/cart');
 }

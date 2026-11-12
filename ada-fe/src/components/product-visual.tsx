@@ -16,7 +16,6 @@ export function ProductVisual({ product, large = false }: { product: Pick<Produc
       ) : (
         <div className="product-photo-placeholder" role="img" aria-label={`Foto ${product.name} belum tersedia`}><strong>Foto belum tersedia</strong><span>{product.name}</span></div>
       )}
-      <span className="visual-sku">{product.sku}</span>
     </div>
   );
 }

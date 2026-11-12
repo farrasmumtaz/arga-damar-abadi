@@ -13,7 +13,7 @@ export function AccountSecurityForm({ operation, token }: { operation: SecurityO
   const [state, action, pending] = useActionState(accountSecurityAction.bind(null, operation), {});
   const [visible, setVisible] = useState(false);
   const changing = operation === 'reset-password' || operation === 'change-password';
-  if (state.success) return <div role="status"><p className="form-success">{state.success}</p>{changing && <Link href="/login">Masuk kembali</Link>}</div>;
+  if (state.success) return <div role="status"><p role="status" className="form-success">{state.success}</p>{changing && <Link href="/login">Masuk kembali</Link>}</div>;
   return <form action={action} className="auth-form">
     {token && <input type="hidden" name="token" value={token} />}
     {operation === 'forgot-password' && <label className="field">Email<input name="email" type="email" autoComplete="email" maxLength={255} required /></label>}
