@@ -12,3 +12,4 @@ src/generated/
 
 *.tsbuildinfo
 *.tsbuildinfo
+.vercel
